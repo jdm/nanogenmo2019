@@ -6,6 +6,7 @@ let {
     youngAdultAge,
     middleAge,
     whole_number,
+    bool,
 } = require("./randomtext");
 
 const firstNameStart = [
@@ -281,8 +282,6 @@ let emotion = [
     "nervous",
 ];
 
-let protagonist = character();
-
 function describeCharacter(char) {
     let parts = [
         [
@@ -318,3 +317,122 @@ let family = createFamily();
 for (const m of family) {
     console.log(describeCharacter(allCharacters[m]));
 }
+
+const indoorObject = [
+    "sofa",
+    "chair",
+    "table",
+    "lamp",
+    "small plant",
+    "picture",
+];
+
+const indoorEnvironments = [
+    "bedroom",
+    "kitchen",
+    "living room",
+    "hall",
+    "classroom",
+    "room",
+    "cafeteria",
+    "shop",
+];
+
+const outdoorObject = [
+    "tree",
+    "bush",
+    "grass",
+    "leaf",
+    "spider web",
+    "flower",
+];
+
+const outdoorEnvironments = [
+    "backyard",
+    "garden",
+    "park",
+    "field",
+    "forest",
+    "street",
+];
+
+function createScene() {
+    let minCharacters = Math.min(2, allCharacters.length);
+    let maxCharacters = Math.min(4, allCharacters.length);
+    let numCharacters = whole_number(minCharacters, maxCharacters);
+    let characters = [];
+    while (characters.length < numCharacters) {
+        let char = whole_number(0, allCharacters.length);
+        if (characters.indexOf(char) == -1) {
+            characters.push(char);
+        }
+    }
+
+    const isIndoors = bool();
+    const environment = isIndoors ? choose(indoorEnvironments) : choose(outdoorEnvironments);
+    const objectSource = isIndoors ? indoorObject : outdoorObject;
+
+    let numObjects = whole_number(0, objectSource.length);
+    let objects = [];
+    for (var i = 0; i < numObjects; i++) {
+        objects.push(choose(objectSource));
+    }
+
+    return {
+        environment: environment,
+        characters: characters,
+        objects: objects,
+    };
+}
+
+function describeScene(scene) {
+    const chars = scene.characters.map(c => allCharacters[c].firstName);
+    const verb = chars.length > 1 ? "are" : "is";
+
+    let result = [];
+    for (const c of chars) {
+        result.push(c);
+        result.push("and");
+    }
+    // remove last "and"
+    result.pop();
+
+    const actions = [
+        "sitting",
+        "standing",
+        "lying",
+        "talking",
+        "walking",
+        "running",
+    ];
+
+    const rest = [
+        verb,
+        choose(actions),
+        "in",
+        "a",
+        scene.environment,
+        ".",
+    ];
+    for (const r of rest) {
+        result.push(r);
+    }
+
+    let result2 = [
+        "there",
+        "is",
+    ];
+    for (const o of scene.objects) {
+        result2.push("a");
+        result2.push(o);
+        result2.push("and");
+    }
+    // remove last "and"
+    result2.pop();
+    result2.push(".");
+
+    return paragraph([result, scene.objects.length ? result2 : []]);
+}
+
+let scene = createScene();
+console.log(describeScene(scene));

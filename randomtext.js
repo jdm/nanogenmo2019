@@ -27,6 +27,10 @@ exports.whole_number = function(start, end) {
     return Math.floor(Math.random() * (end - start)) + start;
 }
 
+exports.bool = function() {
+    return !!exports.whole_number(0, 2);
+}
+
 function percentage() {
     return exports.whole_number(0, 100) + "%";
 }
@@ -58,7 +62,9 @@ exports.paragraph = function(list) {
     let result = [];
     for (const sentence of list) {
         let combined = exports.combine(sentence).replace(" .", ".").replace(" ,", ",");
-        result.push(combined[0].toUpperCase() + combined.slice(1));
+        if (combined) {
+            result.push(combined[0].toUpperCase() + combined.slice(1));
+        }
     }
     return exports.combine(result);
 }
