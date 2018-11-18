@@ -226,7 +226,7 @@ function genderedRelationship(char1, char2) {
 
 function createFamily() {
     let numParents = 0 , numChildren = 0;
-    while (!numParents && !numChildren) {
+    while (!numParents && !numChildren && numParents + numChildren < 2) {
         numParents = whole_number(0, 4);
         numChildren = whole_number(0, 4);
     }
@@ -356,7 +356,7 @@ const outdoorEnvironments = [
     "street",
 ];
 
-function createScene() {
+function createSetting() {
     let minCharacters = Math.min(2, allCharacters.length);
     let maxCharacters = Math.min(4, allCharacters.length);
     let numCharacters = whole_number(minCharacters, maxCharacters);
@@ -381,12 +381,13 @@ function createScene() {
     return {
         environment: environment,
         characters: characters,
+        pointOfView: choose(characters),
         objects: objects,
     };
 }
 
-function describeScene(scene) {
-    const chars = scene.characters.map(c => allCharacters[c].firstName);
+function describeSetting(setting) {
+    const chars = setting.characters.map(c => allCharacters[c].firstName);
     const verb = chars.length > 1 ? "are" : "is";
 
     let result = [];
@@ -411,7 +412,7 @@ function describeScene(scene) {
         choose(actions),
         "in",
         "a",
-        scene.environment,
+        setting.environment,
         ".",
     ];
     for (const r of rest) {
@@ -422,7 +423,7 @@ function describeScene(scene) {
         "there",
         "is",
     ];
-    for (const o of scene.objects) {
+    for (const o of setting.objects) {
         result2.push("a");
         result2.push(o);
         result2.push("and");
@@ -431,8 +432,83 @@ function describeScene(scene) {
     result2.pop();
     result2.push(".");
 
-    return paragraph([result, scene.objects.length ? result2 : []]);
+    return paragraph([result, setting.objects.length ? result2 : []]);
 }
 
-let scene = createScene();
-console.log(describeScene(scene));
+console.log();
+
+let setting = createSetting();
+console.log(describeSetting(setting));
+
+function performDialogue(setting) {
+    const speaker = choose(setting.characters);
+    const target = bool() ? choose(setting.characters) : null;
+    const relationships = allCharacters[speaker].relationships;
+    const relationship = target in relationships ? relationships[target] : 1.0;
+    const choices = [
+    ];
+}
+
+function performAction(setting) {
+    const actor = choose(setting.characters);
+    let target;
+    do {
+        target = choose(setting.characters);
+    } while (target == actor);
+    const object = choose(setting.objects);
+    const actions = [
+        "runs {{their}} hand along {{object}} {{emotion}}",
+        "reaches towards {{object}}, but stops {{emotion}} before touching it",
+        "moves towards {{target}} {{emotion}}",
+        "edges away from {{target}} {{emotion}}",
+        "gazes at {{object}}",
+        "gazes at {{target}}",
+        "looks at {{object}} then quickly looks away",
+        "looks at {{target}} then quickly looks away",
+        "shuffles {{their}} feet",
+        "looks elsewhere",
+        "closes {{their}} eyes",
+        "opens {{their}} eyes",
+        "hums",
+        "sways {{emotion}}",
+    ];
+    return {
+        toText: function() {
+            const actor = allCharacters[this.actor];
+            return actor.firstName + " " +
+                this.text
+                .replace("{{their}}", actor.pronouns.possessive)
+                .replace("{{object}}", "the " + this.object)
+                .replace("{{emotion}}", actor.emotion + "ly")
+                .replace("{{target}}", allCharacters[this.target].firstName) +
+                ".";
+        },
+        actor: actor,
+        target: target,
+        object: object,
+        text: choose(actions),
+    };
+}
+
+function createScene(setting) {
+    const possibleElements = [
+        //performDialogue,
+        //performInnerDialogue,
+        //describeCharacter,
+        //describeEnvironment,
+        performAction,
+    ];
+
+    const numElements = whole_number(10, 20);
+    let elements = [];
+    for (var i = 0; i < numElements; i++) {
+        const element = choose(possibleElements);
+        elements.push(element(setting));
+    }
+    return elements;
+}
+
+console.log();
+
+let scene = createScene(setting);
+console.log(paragraph(scene.map((e) => e.toText())));
