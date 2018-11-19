@@ -225,8 +225,8 @@ function genderedRelationship(char1, char2) {
 }
 
 function createFamily() {
-    let numParents = 0 , numChildren = 0;
-    while (!numParents && !numChildren && numParents + numChildren < 2) {
+    let numParents = 0, numChildren = 0;
+    while (numParents + numChildren < 2) {
         numParents = whole_number(0, 4);
         numChildren = whole_number(0, 4);
     }
