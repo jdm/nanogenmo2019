@@ -378,9 +378,19 @@ function createSetting() {
         objects.push(choose(objectSource));
     }
 
+    let states = {};
+    characters.forEach(id => {
+        states[id] = {
+            lookingAt: null,
+            eyes: "open",
+            holding: null,
+        };
+    });
+
     return {
         environment: environment,
         characters: characters,
+        characterStates: states,
         pointOfView: choose(characters),
         objects: objects,
     };
@@ -451,27 +461,85 @@ function performDialogue(setting) {
 
 function performAction(setting) {
     const actor = choose(setting.characters);
+    const state = setting.characterStates[actor];
+    const realActor = allCharacters[actor];
     let target;
     do {
         target = choose(setting.characters);
     } while (target == actor);
     const object = choose(setting.objects);
     const actions = [
-        "runs {{their}} hand along {{object}} {{emotion}}",
-        "reaches towards {{object}}, but stops {{emotion}} before touching it",
+        {
+            text: "picks up {{object}}",
+            condition: () => state.holding == null,
+            state: () => state.holding = object,
+        },
+        {
+            text: "replaces {{object}}",
+            condition: () => state.holding != null,
+            state: () => state.holding = null,
+        },
+        {
+            text: "runs {{their}} hand along {{object}} {{emotion}}",
+            condition: () => state.eyes == "open",
+        },
+        {
+            text: "reaches towards {{object}}, but stops {{emotion}} before touching it",
+            condition: () => state.eyes == "open",
+        },
         "moves towards {{target}} {{emotion}}",
         "edges away from {{target}} {{emotion}}",
-        "gazes at {{object}}",
-        "gazes at {{target}}",
-        "looks at {{object}} then quickly looks away",
-        "looks at {{target}} then quickly looks away",
+        {
+            text: "gazes at {{object}}",
+            state: () => state.lookingAt = object,
+            condition: () => state.eyes == "open" && state.lookingAt != object,
+        },
+        {
+            text: "gazes at {{target}}",
+            state: () => state.lookingAt = target,
+            condition: () => state.eyes == "open" && state.lookingAt != target,
+        },
+        {
+            text: "looks at {{object}} then quickly looks away",
+            state: () => state.lookingAt = null,
+            condition: () => state.eyes == "open" && state.lookingAt != object,
+        },
+        {
+            text: "looks at {{target}} then quickly looks away",
+            state: () => state.lookingAt = null,
+            condition: () => state.eyes == "open" && state.lookingAt != target,
+        },
         "shuffles {{their}} feet",
-        "looks elsewhere",
-        "closes {{their}} eyes",
-        "opens {{their}} eyes",
+        {
+            text: "looks elsewhere",
+            state: () => state.lookingAt = null,
+            condition: () => state.eyes == "open" && state.lookingAt != null,
+        },
+        {
+            text: "closes {{their}} eyes",
+            state: () => state.eyes = "closed",
+            condition: () => state.eyes == "open",
+        },
+        {
+            text: "opens {{their}} eyes",
+            state: () => state.eyes = "open",
+            condition: () => state.eyes == "closed",
+        },
         "hums",
         "sways {{emotion}}",
     ];
+    const validActions = actions.filter(action => {
+        return typeof action == "string" ||
+            !("condition" in action) ||
+            action.condition()
+    });
+    let action = choose(validActions);
+    if (typeof action == "string") {
+        action = { text: action };
+    }
+    if ("state" in action) {
+        action.state();
+    }
     return {
         toText: function() {
             const actor = allCharacters[this.actor];
@@ -486,7 +554,7 @@ function performAction(setting) {
         actor: actor,
         target: target,
         object: object,
-        text: choose(actions),
+        text: action.text,
     };
 }
 
