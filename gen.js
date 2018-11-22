@@ -519,6 +519,15 @@ function performAction(setting) {
             condition: () => state.eyes == "open" && state.lookingAt != target,
         },
         {
+            text: [
+                "considers {{holding}} in {{their}} hands",
+                "looks at {{holding}} in {{their}} hands thoughfully",
+                "looks intently at {{holding}} in {{their}} hands",
+            ],
+            state: () => state.lookingAt = state.holding,
+            condition: () => state.eyes == "open" && state.holding,
+        },
+        {
             text: "looks at {{object}} then quickly looks away",
             state: () => state.lookingAt = null,
             condition: () => state.eyes == "open" && state.lookingAt != object && object,
