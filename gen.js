@@ -467,32 +467,50 @@ function performAction(setting) {
     do {
         target = choose(setting.characters);
     } while (target == actor);
+    const targetState = setting.characterStates[target];
     const object = choose(setting.objects);
     const actions = [
         {
             text: "picks up {{object}}",
-            condition: () => state.holding == null,
-            state: () => state.holding = object,
+            condition: () => state.holding == null && object,
+            state: () => {
+                state.holding = object;
+                setting.objects.splice(setting.objects.indexOf(object), 1);
+            }
         },
         {
-            text: "replaces {{object}}",
+            text: "replaces {{holding}}",
             condition: () => state.holding != null,
-            state: () => state.holding = null,
+            state: () => {
+                setting.objects.push(state.holding);
+                state.holding = null;
+            }
+        },
+        {
+            text: [
+                "hands {{holding}} to {{target}}",
+                "gives {{holding}} to {{target}}",
+            ],
+            condition: () => targetState.holding == null && state.holding != null,
+            state: () => {
+                targetState.holding = state.holding;
+                state.holding = null;
+            },
         },
         {
             text: "runs {{their}} hand along {{object}} {{emotion}}",
-            condition: () => state.eyes == "open",
+            condition: () => state.eyes == "open" && object,
         },
         {
             text: "reaches towards {{object}}, but stops {{emotion}} before touching it",
-            condition: () => state.eyes == "open",
+            condition: () => state.eyes == "open" && object,
         },
         "moves towards {{target}} {{emotion}}",
         "edges away from {{target}} {{emotion}}",
         {
             text: "gazes at {{object}}",
             state: () => state.lookingAt = object,
-            condition: () => state.eyes == "open" && state.lookingAt != object,
+            condition: () => state.eyes == "open" && state.lookingAt != object && object,
         },
         {
             text: "gazes at {{target}}",
@@ -502,7 +520,7 @@ function performAction(setting) {
         {
             text: "looks at {{object}} then quickly looks away",
             state: () => state.lookingAt = null,
-            condition: () => state.eyes == "open" && state.lookingAt != object,
+            condition: () => state.eyes == "open" && state.lookingAt != object && object,
         },
         {
             text: "looks at {{target}} then quickly looks away",
@@ -537,10 +555,10 @@ function performAction(setting) {
     if (typeof action == "string") {
         action = { text: action };
     }
-    if ("state" in action) {
-        action.state();
+    if (typeof action.text == "string") {
+        action.text = [action.text];
     }
-    return {
+    const result = {
         toText: function() {
             const actor = allCharacters[this.actor];
             return actor.firstName + " " +
@@ -548,14 +566,22 @@ function performAction(setting) {
                 .replace("{{their}}", actor.pronouns.possessive)
                 .replace("{{object}}", "the " + this.object)
                 .replace("{{emotion}}", actor.emotion + "ly")
-                .replace("{{target}}", allCharacters[this.target].firstName) +
-                ".";
+                .replace("{{target}}", allCharacters[this.target].firstName)
+                .replace("{{holding}}", "the " + this.holding)
+                + ".";
         },
         actor: actor,
         target: target,
         object: object,
-        text: action.text,
+        holding: state.holding,
+        text: choose(action.text),
     };
+    // Ensure state isn't updated until value is constructed from current state
+    // as of random selection.
+    if ("state" in action) {
+        action.state();
+    }
+    return result;
 }
 
 function createScene(setting) {
