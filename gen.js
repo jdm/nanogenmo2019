@@ -504,7 +504,7 @@ function performAction(setting) {
         },
         {
             text: "reaches towards {{object}}, but stops {{emotion}} before touching it",
-            condition: () => state.eyes == "open" && object,
+            condition: () => state.eyes == "open" && object && !state.holding,
         },
         "moves towards {{target}} {{emotion}}",
         "edges away from {{target}} {{emotion}}",
