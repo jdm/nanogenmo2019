@@ -490,6 +490,7 @@ function performAction(setting) {
             text: [
                 "hands {{holding}} to {{target}}",
                 "gives {{holding}} to {{target}}",
+                "passes {{holding}} to {{target}}",
             ],
             condition: () => targetState.holding == null && state.holding != null,
             state: () => {
