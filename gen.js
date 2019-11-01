@@ -356,6 +356,12 @@ const outdoorEnvironments = [
     "street",
 ];
 
+function State() {
+    this.lookingAt = null;
+    this.eyes = "open";
+    this.holding = null;
+}
+
 function createSetting() {
     let minCharacters = Math.min(2, allCharacters.length);
     let maxCharacters = Math.min(4, allCharacters.length);
@@ -380,11 +386,7 @@ function createSetting() {
 
     let states = {};
     characters.forEach(id => {
-        states[id] = {
-            lookingAt: null,
-            eyes: "open",
-            holding: null,
-        };
+        states[id] = new State();
     });
 
     return {
