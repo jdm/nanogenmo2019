@@ -363,7 +363,7 @@ function State() {
 }
 
 function createSetting() {
-    let minCharacters = Math.min(2, allCharacters.length);
+    let minCharacters = Math.min(1, allCharacters.length);
     let maxCharacters = Math.min(4, allCharacters.length);
     let numCharacters = whole_number(minCharacters, maxCharacters);
     let characters = [];
@@ -465,13 +465,39 @@ function performAction(setting) {
     const actor = choose(setting.characters);
     const state = setting.characterStates[actor];
     const realActor = allCharacters[actor];
-    let target;
-    do {
-        target = choose(setting.characters);
-    } while (target == actor);
-    const targetState = setting.characterStates[target];
+
+    let target, targetState;
+
     const object = choose(setting.objects);
-    const actions = [
+
+    const targetActions = [
+        {
+            text: [
+                "hands {{holding}} to {{target}}",
+                "gives {{holding}} to {{target}}",
+                "passes {{holding}} to {{target}}",
+            ],
+            condition: () => targetState.holding == null && state.holding != null,
+            state: () => {
+                targetState.holding = state.holding;
+                state.holding = null;
+            },
+        },
+        "moves towards {{target}} {{emotion}}",
+        "edges away from {{target}} {{emotion}}",
+        {
+            text: "gazes at {{target}}",
+            state: () => state.lookingAt = target,
+            condition: () => state.eyes == "open" && state.lookingAt != target,
+        },
+        {
+            text: "looks at {{target}} then quickly looks away",
+            state: () => state.lookingAt = null,
+            condition: () => state.eyes == "open" && state.lookingAt != target,
+        },
+    ];
+
+    const soloActions = [
         {
             text: "picks up {{object}}",
             condition: () => state.holding == null && object,
@@ -489,18 +515,6 @@ function performAction(setting) {
             }
         },
         {
-            text: [
-                "hands {{holding}} to {{target}}",
-                "gives {{holding}} to {{target}}",
-                "passes {{holding}} to {{target}}",
-            ],
-            condition: () => targetState.holding == null && state.holding != null,
-            state: () => {
-                targetState.holding = state.holding;
-                state.holding = null;
-            },
-        },
-        {
             text: "runs {{their}} hand along {{object}} {{emotion}}",
             condition: () => state.eyes == "open" && object,
         },
@@ -508,17 +522,10 @@ function performAction(setting) {
             text: "reaches towards {{object}}, but stops {{emotion}} before touching it",
             condition: () => state.eyes == "open" && object && !state.holding,
         },
-        "moves towards {{target}} {{emotion}}",
-        "edges away from {{target}} {{emotion}}",
         {
             text: "gazes at {{object}}",
             state: () => state.lookingAt = object,
             condition: () => state.eyes == "open" && state.lookingAt != object && object,
-        },
-        {
-            text: "gazes at {{target}}",
-            state: () => state.lookingAt = target,
-            condition: () => state.eyes == "open" && state.lookingAt != target,
         },
         {
             text: [
@@ -533,11 +540,6 @@ function performAction(setting) {
             text: "looks at {{object}} then quickly looks away",
             state: () => state.lookingAt = null,
             condition: () => state.eyes == "open" && state.lookingAt != object && object,
-        },
-        {
-            text: "looks at {{target}} then quickly looks away",
-            state: () => state.lookingAt = null,
-            condition: () => state.eyes == "open" && state.lookingAt != target,
         },
         "shuffles {{their}} feet",
         {
@@ -558,11 +560,23 @@ function performAction(setting) {
         "hums",
         "sways {{emotion}}",
     ];
+
+    let actions = soloActions;
+
+    if (setting.characters.length > 1) {
+        actions.push.apply(actions, targetActions);
+        target = choose(setting.characters.filter(c => c != actor));
+        targetState = setting.characterStates[target];
+    }
+
     const validActions = actions.filter(action => {
+        // An action is valid if it has no conditions, or its conditions are true.
         return typeof action == "string" ||
             !("condition" in action) ||
             action.condition()
     });
+
+    // Choose one equally probable action from all valid actions.
     let action = choose(validActions);
     if (typeof action == "string") {
         action = { text: action };
@@ -573,14 +587,17 @@ function performAction(setting) {
     const result = {
         toText: function() {
             const actor = allCharacters[this.actor];
-            return actor.firstName + " " +
+            let baseText = actor.firstName + " " +
                 this.text
                 .replace("{{their}}", actor.pronouns.possessive)
                 .replace("{{object}}", "the " + this.object)
                 .replace("{{emotion}}", actor.emotion + "ly")
-                .replace("{{target}}", allCharacters[this.target].firstName)
                 .replace("{{holding}}", "the " + this.holding)
-                + ".";
+                  + ".";
+            if (this.target !== undefined) {
+                baseText = baseText.replace("{{target}}", allCharacters[this.target].firstName)
+            }
+            return baseText;
         },
         actor: actor,
         target: target,
