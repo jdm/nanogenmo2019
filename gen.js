@@ -362,6 +362,28 @@ function State() {
     this.holding = null;
 }
 
+function Setting(environment, objects, isIndoors) {
+    this.environment = environment;
+    this.characters = [];
+    this.characterStates = {};
+    this.objects = objects;
+    this.isIndoors = isIndoors;
+}
+
+Setting.prototype.isPresent = function(character) {
+    return this.characters.indexOf(character) != -1;
+}
+
+Setting.prototype.addCharacter = function(character) {
+    this.characters.push(character);
+    this.characterStates[character] = new State();
+}
+
+Setting.prototype.removeCharacter = function(character) {
+    this.characters.splice(this.characters.indexOf(character), 1);
+    delete this.characterStates[character];
+}
+
 function createSetting() {
     let minCharacters = Math.min(1, allCharacters.length);
     let maxCharacters = Math.min(4, allCharacters.length);
@@ -384,18 +406,12 @@ function createSetting() {
         objects.push(choose(objectSource));
     }
 
-    let states = {};
+    let setting = new Setting(environment, objects, isIndoors);
     characters.forEach(id => {
-        states[id] = new State();
+        setting.addCharacter(id);
     });
 
-    return {
-        environment: environment,
-        characters: characters,
-        characterStates: states,
-        pointOfView: choose(characters),
-        objects: objects,
-    };
+    return setting;
 }
 
 function describeSetting(setting) {
@@ -472,6 +488,20 @@ function Actions(actions, args) {
     });
 }
 
+function chooseAction(actionLists) {
+    let validActions = [];
+    actionLists.forEach(list => {
+        const valid = list.actions.filter(action => {
+            // An action is valid if it has no conditions, or its conditions are true.
+            return !("condition" in action) || action.condition();
+        });
+        validActions.push.apply(validActions, valid);
+    });
+
+    // Choose one equally probable action from all valid actions.
+    return choose(validActions);
+}
+
 function Action(text, condition, state) {
     this.text = typeof text == "string" ? [text] : text;
     if (condition) {
@@ -484,8 +514,11 @@ function Action(text, condition, state) {
 
 function performAction(setting) {
     const actor = choose(setting.characters);
+    if (!actor) {
+        return null;
+    }
+
     const state = setting.characterStates[actor];
-    const realActor = allCharacters[actor];
 
     let target, targetState;
     if (setting.characters.length > 1) {
@@ -621,19 +654,13 @@ function performAction(setting) {
         'setting': setting,
     });
 
-    let actions = soloActions.actions;
+    let actions = [soloActions];
 
     if (target) {
-        actions.push.apply(actions, targetActions.actions);
+        actions.push(targetActions);
     }
 
-    const validActions = actions.filter(action => {
-        // An action is valid if it has no conditions, or its conditions are true.
-        return !("condition" in action) || action.condition();
-    });
-
-    // Choose one equally probable action from all valid actions.
-    let action = choose(validActions);
+    let action = chooseAction(actions);
     return evaluateAction(action, actor, target, object, state, setting);
 }
 
@@ -646,7 +673,7 @@ function evaluateAction(action, actor, target, object, state, setting) {
                 .replace("{{object}}", "the " + this.object)
                 .replace("{{emotion}}", this.actor.emotion + "ly")
                 .replace("{{holding}}", "the " + this.holding)
-                  + ".";
+                + ".";
             if (this.target) {
                 baseText = baseText.replace("{{target}}", this.target.firstName)
             }
@@ -657,6 +684,7 @@ function evaluateAction(action, actor, target, object, state, setting) {
         object: object,
         holding: state.holding,
         text: choose(action.text),
+        setting: setting,
     };
     // Ensure state isn't updated until value is constructed from current state
     // as of random selection.
@@ -666,6 +694,80 @@ function evaluateAction(action, actor, target, object, state, setting) {
     return result;
 }
 
+function modifySetting(setting) {
+    const actor = choose(allCharacters.map(c => c.id));
+
+    const actions = new Actions([
+        // An actor enters an outdoor environment.
+        new Action(
+            [
+                "walks up",
+                "arrives",
+            ],
+            ({setting, actor}) => !setting.isIndoors && !setting.isPresent(actor),
+            ({setting, actor}) => setting.addCharacter(actor),
+        ),
+
+        // An actor exits an outdoor environment.
+        new Action(
+            [
+                "walks away",
+                "leaves",
+            ],
+            ({setting, actor}) => !setting.isIndoors && setting.isPresent(actor),
+            ({setting, actor}) => setting.removeCharacter(actor),
+        ),
+
+        // An actor enters an indoor environment.
+        new Action(
+            [
+                "enters",
+                "enters {{environment}}",
+                "walks through the door",
+            ],
+            ({setting, actor}) => setting.isIndoors && !setting.isPresent(actor),
+            ({setting, actor}) => setting.addCharacter(actor),
+        ),
+
+        // An actor exits an indoor environment.
+        new Action(
+            [
+                "walks out the door",
+                "leaves",
+                "leaves {{environment}}",
+            ],
+            ({setting, actor}) => setting.isIndoors && setting.isPresent(actor),
+            ({setting, actor}) => setting.removeCharacter(actor),
+        ),
+    ], {
+        'setting': setting,
+        'actor': actor,
+    });
+
+    let action = chooseAction([actions]);
+
+    const result = {
+        toText: function() {
+            let baseText = this.actor.firstName + " " +
+                this.text
+                .replace("{{environment}}", "the " + this.setting.environment)
+                + ".";
+            return baseText;
+        },
+        actor: allCharacters[actor],
+        text: choose(action.text),
+        setting: setting,
+    };
+    // Ensure state isn't updated until value is constructed from current state
+    // as of random selection.
+    if ("state" in action) {
+        action.state();
+    }
+    return result;
+
+    //return evaluateAction(action, actor, null, object, state, setting);
+}
+
 function createScene(setting) {
     const possibleElements = [
         //performDialogue,
@@ -673,13 +775,20 @@ function createScene(setting) {
         //describeCharacter,
         //describeEnvironment,
         performAction,
+        modifySetting,
     ];
 
     const numElements = whole_number(10, 20);
     let elements = [];
     for (var i = 0; i < numElements; i++) {
         const element = choose(possibleElements);
-        elements.push(element(setting));
+        const result = element(setting);
+        // Ignore selections that turn out to be invalid.
+        if (!result) {
+            i--;
+            continue;
+        }
+        elements.push(result);
     }
     return elements;
 }
