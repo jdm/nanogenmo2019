@@ -461,146 +461,199 @@ function performDialogue(setting) {
     ];
 }
 
+function Actions(actions, args) {
+    this.actions = actions;
+    actions.forEach((action) => {
+        ['state', 'condition'].forEach((p) => {
+            if (p in action) {
+                action[p] = action[p].bind(null, args);
+            }
+        });
+    });
+}
+
+function Action(text, condition, state) {
+    this.text = typeof text == "string" ? [text] : text;
+    if (condition) {
+        this.condition = condition;
+    }
+    if (state) {
+        this.state = state;
+    }
+}
+
 function performAction(setting) {
     const actor = choose(setting.characters);
     const state = setting.characterStates[actor];
     const realActor = allCharacters[actor];
 
     let target, targetState;
-
-    const object = choose(setting.objects);
-
-    const targetActions = [
-        {
-            text: [
-                "hands {{holding}} to {{target}}",
-                "gives {{holding}} to {{target}}",
-                "passes {{holding}} to {{target}}",
-            ],
-            condition: () => targetState.holding == null && state.holding != null,
-            state: () => {
-                targetState.holding = state.holding;
-                state.holding = null;
-            },
-        },
-        "moves towards {{target}} {{emotion}}",
-        "edges away from {{target}} {{emotion}}",
-        {
-            text: "gazes at {{target}}",
-            state: () => state.lookingAt = target,
-            condition: () => state.eyes == "open" && state.lookingAt != target,
-        },
-        {
-            text: "looks at {{target}} then quickly looks away",
-            state: () => state.lookingAt = null,
-            condition: () => state.eyes == "open" && state.lookingAt != target,
-        },
-    ];
-
-    const soloActions = [
-        {
-            text: "picks up {{object}}",
-            condition: () => state.holding == null && object,
-            state: () => {
-                state.holding = object;
-                setting.objects.splice(setting.objects.indexOf(object), 1);
-            }
-        },
-        {
-            text: "replaces {{holding}}",
-            condition: () => state.holding != null,
-            state: () => {
-                setting.objects.push(state.holding);
-                state.holding = null;
-            }
-        },
-        {
-            text: "runs {{their}} hand along {{object}} {{emotion}}",
-            condition: () => state.eyes == "open" && object,
-        },
-        {
-            text: "reaches towards {{object}}, but stops {{emotion}} before touching it",
-            condition: () => state.eyes == "open" && object && !state.holding,
-        },
-        {
-            text: "gazes at {{object}}",
-            state: () => state.lookingAt = object,
-            condition: () => state.eyes == "open" && state.lookingAt != object && object,
-        },
-        {
-            text: [
-                "considers {{holding}} in {{their}} hands",
-                "looks at {{holding}} in {{their}} hands thoughfully",
-                "looks intently at {{holding}} in {{their}} hands",
-            ],
-            state: () => state.lookingAt = state.holding,
-            condition: () => state.eyes == "open" && state.holding,
-        },
-        {
-            text: "looks at {{object}} then quickly looks away",
-            state: () => state.lookingAt = null,
-            condition: () => state.eyes == "open" && state.lookingAt != object && object,
-        },
-        "shuffles {{their}} feet",
-        {
-            text: "looks elsewhere",
-            state: () => state.lookingAt = null,
-            condition: () => state.eyes == "open" && state.lookingAt != null,
-        },
-        {
-            text: "closes {{their}} eyes",
-            state: () => state.eyes = "closed",
-            condition: () => state.eyes == "open",
-        },
-        {
-            text: "opens {{their}} eyes",
-            state: () => state.eyes = "open",
-            condition: () => state.eyes == "closed",
-        },
-        "hums",
-        "sways {{emotion}}",
-    ];
-
-    let actions = soloActions;
-
     if (setting.characters.length > 1) {
-        actions.push.apply(actions, targetActions);
         target = choose(setting.characters.filter(c => c != actor));
         targetState = setting.characterStates[target];
     }
 
+    const object = choose(setting.objects);
+
+    const targetActions = new Actions([
+        // Give current item to another actor
+        new Action(
+            [
+                "hands {{holding}} to {{target}}",
+                "gives {{holding}} to {{target}}",
+                "passes {{holding}} to {{target}}",
+            ],
+            ({state, targetState}) => targetState.holding == null && state.holding != null,
+            ({state, targetState}) => {
+                targetState.holding = state.holding;
+                state.holding = null;
+            },
+        ),
+
+        new Action("moves towards {{target}} {{emotion}}"),
+        new Action("edges away from {{target}} {{emotion}}"),
+
+        // Look at another actor
+        new Action(
+            "gazes at {{target}}",
+            ({state}) => state.eyes == "open" && state.lookingAt != target,
+            ({state}) => state.lookingAt = target,
+        ),
+
+        // Look away from another actor
+        new Action(
+            "looks at {{target}} then quickly looks away",
+            ({state}) => state.eyes == "open" && state.lookingAt != target,
+            ({state}) => state.lookingAt = null,
+        ),
+    ], {
+        'state': state,
+        'targetState': targetState,
+        'target': target,
+    });
+
+    const soloActions = new Actions([
+        // Pick up object in scene
+        new Action(
+            "picks up {{object}}",
+            ({state, object}) => state.holding == null && object,
+            ({state, object, setting}) => {
+                state.holding = object;
+                setting.objects.splice(setting.objects.indexOf(object), 1);
+            }
+        ),
+
+        // Put down object in scene.
+        new Action(
+            "replaces {{holding}}",
+            ({state}) => state.holding != null,
+            ({setting, state}) => {
+                setting.objects.push(state.holding);
+                state.holding = null;
+            }
+        ),
+
+        // Touch an object in scene.
+        new Action(
+            "runs {{their}} hand along {{object}} {{emotion}}",
+            ({state}) => state.eyes == "open" && object,
+        ),
+
+        // Do not quite touch object in scene.
+        new Action(
+            "reaches towards {{object}}, but stops {{emotion}} before touching it",
+            ({state, object}) => state.eyes == "open" && object && !state.holding,
+        ),
+
+        // Look at object in scene.
+        new Action(
+            "gazes at {{object}}",
+            ({state, object}) => state.eyes == "open" && state.lookingAt != object && object,
+            ({state, object}) => state.lookingAt = object,
+        ),
+
+        // Look at held object.
+        new Action(
+            [
+                "considers {{holding}} in {{their}} hands",
+                "looks at {{holding}} in {{their}} hands thoughfully",
+                "looks intently at {{holding}} in {{their}} hands",
+            ],
+            ({state}) => state.eyes == "open" && state.holding,
+            ({state}) => state.lookingAt = state.holding,
+        ),
+
+        // Look at object and then away.
+        new Action(
+            "looks at {{object}} then quickly looks away",
+            ({state, object}) => state.eyes == "open" && state.lookingAt != object && object,
+            ({state}) => state.lookingAt = null,
+        ),
+
+        new Action("shuffles {{their}} feet"),
+
+        // Stop looking at current target.
+        new Action(
+            "looks elsewhere",
+            ({state}) => state.eyes == "open" && state.lookingAt != null,
+            ({state}) => state.lookingAt = null,
+        ),
+
+        // Close eyes.
+        new Action(
+            "closes {{their}} eyes",
+            ({state}) => state.eyes == "open",
+            ({state}) => state.eyes = "closed",
+        ),
+
+        // Open eyes.
+        new Action(
+            "opens {{their}} eyes",
+            ({state}) => state.eyes == "closed",
+            ({state}) => state.eyes = "open",
+        ),
+
+        new Action("hums"),
+        new Action("sways {{emotion}}"),
+    ], {
+        'state': state,
+        'object': object,
+        'setting': setting,
+    });
+
+    let actions = soloActions.actions;
+
+    if (target) {
+        actions.push.apply(actions, targetActions.actions);
+    }
+
     const validActions = actions.filter(action => {
         // An action is valid if it has no conditions, or its conditions are true.
-        return typeof action == "string" ||
-            !("condition" in action) ||
-            action.condition()
+        return !("condition" in action) || action.condition();
     });
 
     // Choose one equally probable action from all valid actions.
     let action = choose(validActions);
-    if (typeof action == "string") {
-        action = { text: action };
-    }
-    if (typeof action.text == "string") {
-        action.text = [action.text];
-    }
+    return evaluateAction(action, actor, target, object, state, setting);
+}
+
+function evaluateAction(action, actor, target, object, state, setting) {
     const result = {
         toText: function() {
-            const actor = allCharacters[this.actor];
-            let baseText = actor.firstName + " " +
+            let baseText = this.actor.firstName + " " +
                 this.text
-                .replace("{{their}}", actor.pronouns.possessive)
+                .replace("{{their}}", this.actor.pronouns.possessive)
                 .replace("{{object}}", "the " + this.object)
-                .replace("{{emotion}}", actor.emotion + "ly")
+                .replace("{{emotion}}", this.actor.emotion + "ly")
                 .replace("{{holding}}", "the " + this.holding)
                   + ".";
-            if (this.target !== undefined) {
-                baseText = baseText.replace("{{target}}", allCharacters[this.target].firstName)
+            if (this.target) {
+                baseText = baseText.replace("{{target}}", this.target.firstName)
             }
             return baseText;
         },
-        actor: actor,
-        target: target,
+        actor: allCharacters[actor],
+        target: target ? allCharacters[target] : null,
         object: object,
         holding: state.holding,
         text: choose(action.text),
