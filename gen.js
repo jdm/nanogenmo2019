@@ -661,31 +661,38 @@ function performAction(setting) {
     }
 
     let action = chooseAction(actions);
-    return evaluateAction(action, actor, target, object, state, setting);
-}
-
-function evaluateAction(action, actor, target, object, state, setting) {
-    const result = {
-        toText: function() {
-            let baseText = this.actor.firstName + " " +
-                this.text
-                .replace("{{their}}", this.actor.pronouns.possessive)
-                .replace("{{object}}", "the " + this.object)
-                .replace("{{emotion}}", this.actor.emotion + "ly")
-                .replace("{{holding}}", "the " + this.holding)
-                + ".";
-            if (this.target) {
-                baseText = baseText.replace("{{target}}", this.target.firstName)
-            }
-            return baseText;
-        },
+    let properties = {
         actor: allCharacters[actor],
         target: target ? allCharacters[target] : null,
         object: object,
         holding: state.holding,
-        text: choose(action.text),
         setting: setting,
     };
+    return evaluateAction(action, properties, function() {
+        let baseText = this.actor.firstName + " " +
+            this.text
+            .replace("{{their}}", this.actor.pronouns.possessive)
+            .replace("{{object}}", "the " + this.object)
+            .replace("{{emotion}}", this.actor.emotion + "ly")
+            .replace("{{holding}}", "the " + this.holding)
+            + ".";
+        if (this.target) {
+            baseText = baseText.replace("{{target}}", this.target.firstName)
+        }
+        return baseText;
+    });
+}
+
+function evaluateAction(action, properties, toText) {
+    const result = {
+        toText: toText,
+        text: choose(action.text),
+    };
+
+    for (const entry of Object.entries(properties)) {
+        result[entry[0]] = entry[1];
+    }
+
     // Ensure state isn't updated until value is constructed from current state
     // as of random selection.
     if ("state" in action) {
@@ -745,27 +752,17 @@ function modifySetting(setting) {
     });
 
     let action = chooseAction([actions]);
-
-    const result = {
-        toText: function() {
-            let baseText = this.actor.firstName + " " +
-                this.text
-                .replace("{{environment}}", "the " + this.setting.environment)
-                + ".";
-            return baseText;
-        },
+    let properties = {
         actor: allCharacters[actor],
-        text: choose(action.text),
         setting: setting,
     };
-    // Ensure state isn't updated until value is constructed from current state
-    // as of random selection.
-    if ("state" in action) {
-        action.state();
-    }
-    return result;
-
-    //return evaluateAction(action, actor, null, object, state, setting);
+    return evaluateAction(action, properties, function() {
+        let baseText = this.actor.firstName + " " +
+            this.text
+            .replace("{{environment}}", "the " + this.setting.environment)
+            + ".";
+        return baseText;
+    });
 }
 
 function createScene(setting) {
