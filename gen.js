@@ -468,15 +468,15 @@ console.log();
 let setting = createSetting();
 console.log(describeSetting(setting));
 
-function performDialogue(setting) {
-    const actor = choose(setting.characters);
+function performDialogue(scene) {
+    const actor = choose(scene.setting.characters);
     // Can't have dialogue without any characters present.
     if (!actor) {
         return null;
     }
 
-    const target = choose(setting.characters.filter((c) => c != actor));
-    const object = choose(setting.objects);
+    const target = choose(scene.setting.characters.filter((c) => c != actor));
+    const object = choose(scene.setting.objects);
 
     const actions = new Actions([
         new Action(
@@ -532,16 +532,16 @@ function performDialogue(setting) {
         'actor': actor,
         'target': target,
         'object': object,
-        'state': setting.characterStates[actor],
+        'state': scene.setting.characterStates[actor],
     });
 
     let action = chooseAction(actions);
     let properties = {
         'actor': allCharacters[actor],
         'target': target != null ? allCharacters[target] : null,
-        'setting': setting,
+        'setting': scene.setting,
         'object': object,
-        'heldObject': setting.characterStates[actor].holding,
+        'heldObject': scene.setting.characterStates[actor].holding,
     };
     return evaluateAction(action, properties, function() {
         let baseText = '"' + this.text + '", ' + this.actor.firstName + ' says' + (this.target != null ? ' to ' + this.target.firstName : '') + '.';
@@ -598,21 +598,21 @@ function Action(text, condition, state) {
     }
 }
 
-function performAction(setting) {
-    const actor = choose(setting.characters);
+function performAction(scene) {
+    const actor = choose(scene.setting.characters);
     if (!actor) {
         return null;
     }
 
-    const state = setting.characterStates[actor];
+    const state = scene.setting.characterStates[actor];
 
     let target, targetState;
-    if (setting.characters.length > 1) {
-        target = choose(setting.characters.filter(c => c != actor));
-        targetState = setting.characterStates[target];
+    if (scene.setting.characters.length > 1) {
+        target = choose(scene.setting.characters.filter(c => c != actor));
+        targetState = scene.setting.characterStates[target];
     }
 
-    const object = choose(setting.objects);
+    const object = choose(scene.setting.objects);
 
     const targetActions = new Actions([
         // Give current item to another actor
@@ -737,7 +737,7 @@ function performAction(setting) {
     ], {
         'state': state,
         'object': object,
-        'setting': setting,
+        'setting': scene.setting,
     });
 
     let actions = [soloActions];
@@ -752,7 +752,7 @@ function performAction(setting) {
         'target': target ? allCharacters[target] : null,
         'object': object,
         'holding': state.holding,
-        'setting': setting,
+        'setting': scene.setting,
     };
     return evaluateAction(action, properties, function() {
         let baseText = this.actor.firstName + " " +
@@ -788,7 +788,7 @@ function evaluateAction(action, properties, toText) {
     return result;
 }
 
-function modifySetting(setting) {
+function modifySetting(scene) {
     const actor = choose(allCharacters.map(c => c.id));
 
     const actions = new Actions([
@@ -834,14 +834,14 @@ function modifySetting(setting) {
             ({setting, actor}) => setting.removeCharacter(actor),
         ),
     ], {
-        'setting': setting,
+        'setting': scene.setting,
         'actor': actor,
     });
 
     let action = chooseAction([actions]);
     let properties = {
         actor: allCharacters[actor],
-        setting: setting,
+        setting: scene.setting,
     };
     return evaluateAction(action, properties, function() {
         let baseText = this.actor.firstName + " " +
@@ -869,7 +869,7 @@ Scene.prototype.generateAction = function() {
 
     while (true) {
         const element = choose(possibleElements);
-        const result = element(this.setting);
+        const result = element(this);
         // Ignore selections that turn out to be invalid.
         if (result) {
             this.actions.push(result);
