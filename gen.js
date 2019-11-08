@@ -1,11 +1,13 @@
 let {
     choose,
+    chooseAndRemove,
     combine,
     reduce,
     paragraph,
     youngAdultAge,
     middleAge,
     whole_number,
+    floating_point_number,
     bool,
 } = require("./randomtext");
 
@@ -245,10 +247,10 @@ function createFamily() {
             if (i == j) {
                 continue;
             }
-            symmetricRelationship("spouse", parents[i], 1.0, parents[j], 1.0);
+            symmetricRelationship("spouse", parents[i], floating_point_number(0.0, 1.0), parents[j], floating_point_number(0.0, 1.0));
         }
         for (var j = 0; j < numChildren; j++) {
-            asymmetricRelationship("child", parents[i], 1.0, "parent", children[j], 1.0);
+            asymmetricRelationship("child", parents[i], floating_point_number(0.0, 1.0), "parent", children[j], floating_point_number(0.0, 1.0));
         }
     }
 
@@ -257,7 +259,7 @@ function createFamily() {
             if (i == j) {
                 continue;
             }
-            symmetricRelationship("sibling", children[i], 1.0, children[j], 1.0);
+            symmetricRelationship("sibling", children[i], floating_point_number(0.0, 1.0), children[j], floating_point_number(0.0, 1.0));
         }
     }
 
@@ -467,6 +469,78 @@ console.log();
 
 let setting = createSetting();
 console.log(describeSetting(setting));
+
+function replyToQuestion(scene, actor, target) {
+    const actions = new Actions([
+        new Action(
+            [
+                "I'm feeling {{emotion}}",
+                "I feel {{emotion}}",
+                "I'm {{emotion}}; thanks for asking",
+            ],
+            ({actor, target}) => allCharacters[actor].relationships[target].value > 0.5,
+        ),
+
+        new Action(
+            [
+                "You don't actually care",
+                "You're just pretending to care",
+                "Don't ask me that if you don't care",
+            ],
+            ({actor, target}) => allCharacters[actor].relationships[target].value <= 0.5,
+        ),
+    ], {
+        'actor': actor,
+        'target': target,
+    });
+
+    let action = chooseAction(actions);
+    let properties = {
+        'actor': allCharacters[actor],
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = '"' + this.text + '", ' + this.actor.firstName + ' replies.';
+        baseText = baseText
+            .replace("{{emotion}}", this.actor.emotion)
+        ;
+        return baseText;
+    });
+}
+
+function askQuestion(scene, selections = {}) {
+    const actor = 'actor' in selections ? selections.actor : choose(scene.setting.characters);
+    // Can't have dialogue without any characters present.
+    if (!actor) {
+        return null;
+    }
+
+    const target = 'target' in selections ? selections.target : choose(scene.setting.characters.filter((c) => c != actor));
+    if (!target) {
+        return null;
+    }
+
+    const actions = new Actions([
+        new Action(
+            "How are you",
+            () => true,
+            ({scene, actor, target}) => scene.pending.push(replyToQuestion.bind(null, scene, target, actor)),
+        ),
+    ], {
+        'scene': scene,
+        'actor': actor,
+        'target': target,
+    });
+
+    let action = chooseAction(actions);
+    let properties = {
+        'actor': allCharacters[actor],
+        'target': allCharacters[target],
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = '"' + this.text + '?", ' + this.actor.firstName + ' asks ' + this.target.firstName + '.';
+        return baseText;
+    });
+}
 
 function performDialogue(scene) {
     const actor = choose(scene.setting.characters);
@@ -855,11 +929,13 @@ function modifySetting(scene) {
 function Scene() {
     this.actions = [];
     this.setting = setting;
+    this.pending = [];
 }
 
 Scene.prototype.generateAction = function() {
     const possibleElements = [
         performDialogue,
+        askQuestion,
         //performInnerDialogue,
         //describeCharacter,
         //describeEnvironment,
@@ -868,7 +944,8 @@ Scene.prototype.generateAction = function() {
     ];
 
     while (true) {
-        const element = choose(possibleElements);
+        const pendingChoice = chooseAndRemove(this.pending);
+        const element = pendingChoice ? pendingChoice : choose(possibleElements);
         const result = element(this);
         // Ignore selections that turn out to be invalid.
         if (result) {

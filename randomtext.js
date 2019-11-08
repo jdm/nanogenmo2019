@@ -26,6 +26,20 @@ exports.choose = function(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+exports.chooseAndRemove = function(list) {
+    if (list.length == 0) {
+        return null;
+    }
+    let choice = Math.floor(Math.random() * list.length);
+    let item = list[choice];
+    list.splice(choice, 1);
+    return item;
+}
+
+exports.floating_point_number = function(start, end) {
+    return Math.random() * (end - start) + start;
+}
+
 exports.whole_number = function(start, end) {
     return Math.floor(Math.random() * (end - start)) + start;
 }
