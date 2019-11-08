@@ -175,11 +175,11 @@ const gender = [
 function pronouns(gender) {
     switch (gender) {
     case "male":
-        return ["he", "him", "his"];
+        return ["he", "him", "his", "himself"];
     case "female":
-        return ["she", "her", "her"];
+        return ["she", "her", "her", "herself"];
     case "non-binary":
-        return ["they", "them", "their"];
+        return ["they", "them", "their", "themself"];
     default:
         throw "unexpected gender " + gender;
     }
@@ -223,7 +223,7 @@ function asymmetricRelationship(name1, char1, affection1, name2, char2, affectio
 
 function character(age) {
     let charGender = choose(gender);
-    let [direct, indirect, possessive] = pronouns(charGender);
+    let [direct, indirect, possessive, reflexive] = pronouns(charGender);
 
     allCharacters.push({
         id: allCharacters.length,
@@ -236,6 +236,7 @@ function character(age) {
             direct: direct,
             indirect: indirect,
             possessive: possessive,
+            reflexive: reflexive,
         },
         relationships: {},
         emotion: choose(emotion),
@@ -585,6 +586,56 @@ function askQuestion(scene, selections = {}) {
     });
 }
 
+function performInnerDialogue(scene) {
+    let actor = scene.povCharacter;
+
+    const target = choose(scene.setting.characters.filter((c) => c != actor));
+
+    const actions = new Actions([
+        new Action(
+            "I wonder why {{targetName}} is so {{targetEmotion}}",
+            ({target}) => target != null,
+        ),
+
+        new Action(
+            [
+                "Oh no, not {{targetName}} again",
+                "{{targetName}} is the worst",
+            ],
+            ({target}) => target != null && allCharacters[actor].relationships[target].value <= 0.5,
+        ),
+
+        new Action(
+            [
+                "{{targetName}} is great",
+                "I like {{targetName}}",
+                "I hope {{targetName}} likes me",
+            ],
+            ({target}) => target != null && allCharacters[actor].relationships[target].value > 0.5,
+        ),
+    ], {
+        target: target,
+    });
+
+    let action = chooseAction(actions);
+    let properties = {
+        actor: allCharacters[actor],
+        target: target != null ? allCharacters[target] : null,
+        scene: scene,
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = "'" + this.text + ",' " + this.actor.firstName + " thinks" + (bool() ? " to {{pronoun}}" : "") + ".";
+        baseText = baseText.replace("{{pronoun}}", this.actor.pronouns.reflexive);
+        if (this.target != null) {
+            baseText = baseText
+                .replace("{{targetEmotion}}", this.target.emotion)
+                .replace("{{targetName}}", this.target.firstName)
+            ;
+        }
+        return baseText;
+    });
+}
+
 function performDialogue(scene) {
     const actor = choose(scene.setting.characters);
     // Can't have dialogue without any characters present.
@@ -887,6 +938,10 @@ function performAction(scene) {
 }
 
 function evaluateAction(action, properties, toText) {
+    if (!action) {
+        return null;
+    }
+
     const result = {
         toText: toText,
         text: choose(action.text),
@@ -925,7 +980,7 @@ function modifySetting(scene) {
                 "walks away",
                 "leaves",
             ],
-            ({setting, actor}) => !setting.isIndoors && setting.isPresent(actor),
+            ({setting, actor, scene}) => !setting.isIndoors && setting.isPresent(actor) && actor != scene.povCharacter,
             ({setting, actor}) => setting.removeCharacter(actor),
         ),
 
@@ -947,12 +1002,13 @@ function modifySetting(scene) {
                 "leaves",
                 "leaves {{environment}}",
             ],
-            ({setting, actor}) => setting.isIndoors && setting.isPresent(actor),
+            ({setting, actor}) => setting.isIndoors && setting.isPresent(actor) && actor != scene.povCharacter,
             ({setting, actor}) => setting.removeCharacter(actor),
         ),
     ], {
         'setting': scene.setting,
         'actor': actor,
+        'scene': scene,
     });
 
     let action = chooseAction([actions]);
@@ -973,13 +1029,14 @@ function Scene() {
     this.actions = [];
     this.setting = setting;
     this.pending = [];
+    this.povCharacter = choose(setting.characters);
 }
 
 Scene.prototype.generateAction = function() {
     const possibleElements = [
         performDialogue,
         askQuestion,
-        //performInnerDialogue,
+        performInnerDialogue,
         //describeCharacter,
         //describeEnvironment,
         performAction,
