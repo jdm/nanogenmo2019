@@ -20,6 +20,9 @@ exports.combine = function(list) {
 }
 
 exports.choose = function(list) {
+  if (list.length == 0) {
+    return null;
+  }
   return list[Math.floor(Math.random() * list.length)];
 }
 

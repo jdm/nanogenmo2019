@@ -426,18 +426,18 @@ function describeSetting(setting) {
     // remove last "and"
     result.pop();
 
-    const actions = [
+    /*const actions = [
         "sitting",
         "standing",
         "lying",
         "talking",
         "walking",
         "running",
-    ];
+    ];*/
 
     const rest = [
         verb,
-        choose(actions),
+        //choose(actions),
         "in",
         "a",
         setting.environment,
@@ -469,12 +469,95 @@ let setting = createSetting();
 console.log(describeSetting(setting));
 
 function performDialogue(setting) {
-    const speaker = choose(setting.characters);
-    const target = bool() ? choose(setting.characters) : null;
-    const relationships = allCharacters[speaker].relationships;
-    const relationship = target in relationships ? relationships[target] : 1.0;
-    const choices = [
-    ];
+    const actor = choose(setting.characters);
+    // Can't have dialogue without any characters present.
+    if (!actor) {
+        return null;
+    }
+
+    const target = choose(setting.characters.filter((c) => c != actor));
+    const object = choose(setting.objects);
+
+    const actions = new Actions([
+        new Action(
+            [
+                "I feel {{emotion}}",
+                "This {{environment}} makes me feel {{emotion}}",
+                "I am {{age}} but I feel {{randomAge}}",
+            ]
+        ),
+
+        new Action(
+            [
+                "You look {{targetEmotion}}",
+                "You look like you are {{targetEmotion}}",
+            ],
+            ({target}) => target != null,
+        ),
+
+        new Action(
+            [
+                "What a striking {{object}}",
+                "I do not like that {{object}}",
+                "What a horrible {{object}}",
+                "That is quite a {{object}}",
+            ],
+            ({object}) => object != null,
+        ),
+
+        new Action(
+            [
+                "Look at this {{heldObject}}",
+                "Have you seen this {{heldObject}}",
+                "Take a look at this {{heldObject}} I am holding",
+            ],
+            ({state, target}) => target != null && state.holding != null,
+        ),
+
+        new Action(
+            "I like you",
+            ({actor, target}) => target != null && allCharacters[actor].relationships[target].value > 0.5,
+            ({actor, target}) => allCharacters[target].relationships[actor].value *= 1.3,
+        ),
+
+        new Action(
+            [
+                "I dislike you",
+                "I do not like you",
+            ],
+            ({actor, target}) => target != null && allCharacters[actor].relationships[target].value <= 0.5,
+            ({actor, target}) => allCharacters[target].relationships[actor].value *= 0.6,
+        ),
+    ], {
+        'actor': actor,
+        'target': target,
+        'object': object,
+        'state': setting.characterStates[actor],
+    });
+
+    let action = chooseAction(actions);
+    let properties = {
+        'actor': allCharacters[actor],
+        'target': target != null ? allCharacters[target] : null,
+        'setting': setting,
+        'object': object,
+        'heldObject': setting.characterStates[actor].holding,
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = '"' + this.text + '", ' + this.actor.firstName + ' says' + (this.target != null ? ' to ' + this.target.firstName : '') + '.';
+        baseText = baseText
+            .replace("{{emotion}}", this.actor.emotion)
+            .replace("{{environment}}", this.setting.environment)
+            .replace("{{age}}", this.actor.age)
+            .replace("{{randomAge}}", whole_number(15, 90))
+            .replace("{{object}}", this.object)
+            .replace("{{heldObject}}", this.heldObject)
+        ;
+        if (this.target != null) {
+            baseText = baseText.replace("{{targetEmotion}}", this.target.emotion);
+        }
+        return baseText;
+    });
 }
 
 function Actions(actions, args) {
@@ -489,6 +572,9 @@ function Actions(actions, args) {
 }
 
 function chooseAction(actionLists) {
+    if (!Array.isArray(actionLists) && actionLists instanceof Actions) {
+        actionLists = [actionLists];
+    }
     let validActions = [];
     actionLists.forEach(list => {
         const valid = list.actions.filter(action => {
@@ -549,14 +635,14 @@ function performAction(setting) {
         // Look at another actor
         new Action(
             "gazes at {{target}}",
-            ({state}) => state.eyes == "open" && state.lookingAt != target,
-            ({state}) => state.lookingAt = target,
+            ({state, target}) => state.eyes == "open" && state.lookingAt != target,
+            ({state, target}) => state.lookingAt = target,
         ),
 
         // Look away from another actor
         new Action(
             "looks at {{target}} then quickly looks away",
-            ({state}) => state.eyes == "open" && state.lookingAt != target,
+            ({state, target}) => state.eyes == "open" && state.lookingAt != target,
             ({state}) => state.lookingAt = null,
         ),
     ], {
@@ -662,11 +748,11 @@ function performAction(setting) {
 
     let action = chooseAction(actions);
     let properties = {
-        actor: allCharacters[actor],
-        target: target ? allCharacters[target] : null,
-        object: object,
-        holding: state.holding,
-        setting: setting,
+        'actor': allCharacters[actor],
+        'target': target ? allCharacters[target] : null,
+        'object': object,
+        'holding': state.holding,
+        'setting': setting,
     };
     return evaluateAction(action, properties, function() {
         let baseText = this.actor.firstName + " " +
@@ -676,7 +762,7 @@ function performAction(setting) {
             .replace("{{emotion}}", this.actor.emotion + "ly")
             .replace("{{holding}}", "the " + this.holding)
             + ".";
-        if (this.target) {
+        if (this.target != null) {
             baseText = baseText.replace("{{target}}", this.target.firstName)
         }
         return baseText;
@@ -698,6 +784,7 @@ function evaluateAction(action, properties, toText) {
     if ("state" in action) {
         action.state();
     }
+
     return result;
 }
 
@@ -767,7 +854,7 @@ function modifySetting(setting) {
 
 function createScene(setting) {
     const possibleElements = [
-        //performDialogue,
+        performDialogue,
         //performInnerDialogue,
         //describeCharacter,
         //describeEnvironment,
