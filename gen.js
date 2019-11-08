@@ -852,7 +852,12 @@ function modifySetting(setting) {
     });
 }
 
-function createScene(setting) {
+function Scene() {
+    this.actions = [];
+    this.setting = setting;
+}
+
+Scene.prototype.generateAction = function() {
     const possibleElements = [
         performDialogue,
         //performInnerDialogue,
@@ -862,22 +867,27 @@ function createScene(setting) {
         modifySetting,
     ];
 
-    const numElements = whole_number(10, 20);
-    let elements = [];
-    for (var i = 0; i < numElements; i++) {
+    while (true) {
         const element = choose(possibleElements);
-        const result = element(setting);
+        const result = element(this.setting);
         // Ignore selections that turn out to be invalid.
-        if (!result) {
-            i--;
-            continue;
+        if (result) {
+            this.actions.push(result);
+            break;
         }
-        elements.push(result);
     }
-    return elements;
+}
+
+function createScene(setting) {
+    let scene = new Scene(setting);
+    const numElements = whole_number(10, 20);
+    while (scene.actions.length < numElements) {
+        scene.generateAction();
+    }
+    return scene;
 }
 
 console.log();
 
 let scene = createScene(setting);
-console.log(paragraph(scene.map((e) => e.toText())));
+console.log(paragraph(scene.actions.map((e) => e.toText())));
