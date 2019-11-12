@@ -225,6 +225,13 @@ function character(age) {
     let charGender = choose(gender);
     let [direct, indirect, possessive, reflexive] = pronouns(charGender);
 
+    const newChar = allCharacters.length;
+    allCharacters.forEach((c) => {
+        c.relationships[newChar] = {
+            value: 0,
+        };
+    });
+
     allCharacters.push({
         id: allCharacters.length,
         firstName: firstName(),
@@ -241,7 +248,7 @@ function character(age) {
         relationships: {},
         emotion: choose(emotion),
     });
-    return allCharacters.length - 1;
+    return newChar;
 }
 
 function genderedRelationship(char1, char2) {
@@ -270,6 +277,36 @@ function genderedRelationship(char1, char2) {
     }
 }
 
+function Family() {
+    this.members = [];
+    this.parents = [];
+    this.children = [];
+}
+
+Family.prototype.addParent = function() {
+    let actor = character(middleAge());
+    for (const spouse of this.parents) {
+        symmetricRelationship("spouse", actor, floating_point_number(0.0, 1.0), spouse, floating_point_number(0.0, 1.0));
+    }
+    for (const child of this.children) {
+        asymmetricRelationship("child", actor, floating_point_number(0.0, 1.0), "parent", child, floating_point_number(0.0, 1.0));
+    }
+    this.parents.push(actor);
+    this.members.push(actor);
+}
+
+Family.prototype.addChild = function() {
+    let actor = character(youngAdultAge());
+    for (const parent of this.parents) {
+        asymmetricRelationship("child", parent, floating_point_number(0.0, 1.0), "parent", actor, floating_point_number(0.0, 1.0));
+    }
+    for (const sibling of this.children) {
+        symmetricRelationship("sibling", actor, floating_point_number(0.0, 1.0), sibling, floating_point_number(0.0, 1.0));
+    }
+    this.children.push(actor);
+    this.members.push(actor);
+}
+
 function createFamily() {
     let numParents = 0, numChildren = 0;
     while (numParents + numChildren < 2) {
@@ -277,37 +314,15 @@ function createFamily() {
         numChildren = whole_number(0, 4);
     }
 
-    let parents = [];
+    let family = new Family();
     for (var i = 0; i < numParents; i++) {
-        parents.push(character(middleAge()));
+        family.addParent();
     }
-    let children = [];
     for (var i = 0; i < numChildren; i++) {
-        children.push(character(youngAdultAge()));
+        family.addChild();
     }
 
-    for (var i = 0; i < numParents; i++) {
-        for (var j = 0; j < numParents; j++) {
-            if (i == j) {
-                continue;
-            }
-            symmetricRelationship("spouse", parents[i], floating_point_number(0.0, 1.0), parents[j], floating_point_number(0.0, 1.0));
-        }
-        for (var j = 0; j < numChildren; j++) {
-            asymmetricRelationship("child", parents[i], floating_point_number(0.0, 1.0), "parent", children[j], floating_point_number(0.0, 1.0));
-        }
-    }
-
-    for (var i = 0; i < numChildren; i++) {
-        for (var j = 0; j < numChildren; j++) {
-            if (i == j) {
-                continue;
-            }
-            symmetricRelationship("sibling", children[i], floating_point_number(0.0, 1.0), children[j], floating_point_number(0.0, 1.0));
-        }
-    }
-
-    return parents.concat(children);
+    return family;
 }
 
 let emotion = [
@@ -357,11 +372,6 @@ function describeCharacter(char) {
         ]);
     }
     return paragraph(parts);
-}
-
-let family = createFamily();
-for (const m of family) {
-    console.log(describeCharacter(allCharacters[m]));
 }
 
 const indoorObject = [
@@ -430,18 +440,22 @@ Setting.prototype.removeCharacter = function(character) {
     delete this.characterStates[character];
 }
 
-function createSetting() {
+Setting.prototype.resetCharacters = function() {
+    this.characterStates = {};
+    this.characters = []
+
     let minCharacters = Math.min(1, allCharacters.length);
     let maxCharacters = Math.min(4, allCharacters.length);
     let numCharacters = whole_number(minCharacters, maxCharacters);
-    let characters = [];
-    while (characters.length < numCharacters) {
+    while (this.characters.length < numCharacters) {
         let char = whole_number(0, allCharacters.length);
-        if (characters.indexOf(char) == -1) {
-            characters.push(char);
+        if (this.characters.indexOf(char) == -1) {
+            this.addCharacter(char);
         }
     }
+}
 
+function createSetting() {
     const isIndoors = bool();
     const environment = isIndoors ? choose(indoorEnvironments) : choose(outdoorEnvironments);
     const objectSource = isIndoors ? indoorObject : outdoorObject;
@@ -453,9 +467,7 @@ function createSetting() {
     }
 
     let setting = new Setting(environment, objects, isIndoors);
-    characters.forEach(id => {
-        setting.addCharacter(id);
-    });
+    setting.resetCharacters();
 
     return setting;
 }
@@ -508,11 +520,6 @@ function describeSetting(setting) {
 
     return paragraph([result, setting.objects.length ? result2 : []]);
 }
-
-console.log();
-
-let setting = createSetting();
-console.log(describeSetting(setting));
 
 function replyToQuestion(scene, actor, target) {
     const actions = new Actions([
@@ -1025,11 +1032,11 @@ function modifySetting(scene) {
     });
 }
 
-function Scene() {
+function Scene(setting, povCharacter) {
     this.actions = [];
     this.setting = setting;
     this.pending = [];
-    this.povCharacter = choose(setting.characters);
+    this.povCharacter = povCharacter ? povCharacter : choose(setting.characters);
 }
 
 Scene.prototype.generateAction = function() {
@@ -1055,8 +1062,11 @@ Scene.prototype.generateAction = function() {
     }
 }
 
-function createScene(setting) {
-    let scene = new Scene(setting);
+Scene.prototype.generateTransition = function(previousScene, timePassed) {
+}
+
+function createScene(setting, povCharacter) {
+    let scene = new Scene(setting, povCharacter);
     const numElements = whole_number(10, 20);
     while (scene.actions.length < numElements) {
         scene.generateAction();
@@ -1064,7 +1074,31 @@ function createScene(setting) {
     return scene;
 }
 
-console.log();
+/////////////////
 
-let scene = createScene(setting);
-console.log(paragraph(scene.actions.map((e) => e.toText())));
+let family = createFamily();
+let homeSetting = createSetting();
+
+let plot = [];
+
+// introduce characters and setting
+let introScene = createScene(homeSetting);
+plot.push(introScene);
+
+// introduce stranger
+homeSetting.resetCharacters();
+if (homeSetting.characters.indexOf(introScene.povCharacter) == -1) {
+    homeSetting.addCharacter(introScene.povCharacter);
+}
+let stranger = character();
+let strangerScene = createScene(homeSetting)
+strangerScene.generateTransition(introScene, { hours: whole_number(1, 5) });
+plot.push(strangerScene);
+
+for (const scene of plot) {
+    console.log(paragraph(scene.actions.map((e) => e.toText())));
+    console.log();
+}
+
+console.log("The end.")
+
