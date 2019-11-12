@@ -226,14 +226,18 @@ function character(age) {
     let [direct, indirect, possessive, reflexive] = pronouns(charGender);
 
     const newChar = allCharacters.length;
+    let newRelationships = {};
     allCharacters.forEach((c) => {
         c.relationships[newChar] = {
+            value: 0,
+        };
+        newRelationships[c.id] = {
             value: 0,
         };
     });
 
     allCharacters.push({
-        id: allCharacters.length,
+        id: newChar,
         firstName: firstName(),
         lastName: lastName(),
         profession: choose(profession),
@@ -245,7 +249,7 @@ function character(age) {
             possessive: possessive,
             reflexive: reflexive,
         },
-        relationships: {},
+        relationships: newRelationships,
         emotion: choose(emotion),
     });
     return newChar;
@@ -1063,10 +1067,67 @@ Scene.prototype.generateAction = function() {
 }
 
 Scene.prototype.generateTransition = function(previousScene, timePassed) {
+    const actions = new Actions([
+        new Action("{{duration}} pass in the blink of an eye."),
+
+        new Action("{{duration}} pass as slow as molasses."),
+
+        new Action("{{duration}} pass uneventfully."),
+
+        new Action("{{duration}} pass surprisingly slowly."),
+
+        new Action("{{duration}} pass surprisingly quickly."),
+
+        new Action("Just like that, it's {{duration}} later."),
+
+        new Action("The next {{duration}} feel like they take forever."),
+    ], {});
+
+    let action = chooseAction(actions);
+    let properties = {
+        duration: timePassed,
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = this.text
+            .replace("{{duration}}", this.duration.hours + " hours")
+        ;
+        return baseText;
+    });
+}
+
+Scene.prototype.generateIntro = function() {
+    let actor = this.povCharacter;
+
+    const actions = new Actions([
+        new Action("{{actor}} finds {{themself}} in the {{environment}}."),
+
+        new Action("{{actor}} is standing in the {{environment}}."),
+
+        new Action("{{actor}} is standing {{emotion}} in {{environment}}."),
+    ], {});
+
+    let action = chooseAction(actions);
+    let properties = {
+        actor: allCharacters[actor],
+        environment: this.setting.environment,
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = this.text
+            .replace("{{actor}}", this.actor.firstName)
+            .replace("{{themself}}", this.actor.pronouns.reflexive)
+            .replace("{{environment}}", this.environment)
+            .replace("{{emotion}}", this.actor.emotion + "ly")
+        ;
+        return baseText;
+    });
 }
 
 function createScene(setting, povCharacter) {
     let scene = new Scene(setting, povCharacter);
+    if (povCharacter != null && scene.characters.indexOf(povCharacter) == -1) {
+        scene.addCharacter(povCharacter);
+    }
+    scene.actions.push(scene.generateIntro());
     const numElements = whole_number(10, 20);
     while (scene.actions.length < numElements) {
         scene.generateAction();
@@ -1087,12 +1148,9 @@ plot.push(introScene);
 
 // introduce stranger
 homeSetting.resetCharacters();
-if (homeSetting.characters.indexOf(introScene.povCharacter) == -1) {
-    homeSetting.addCharacter(introScene.povCharacter);
-}
 let stranger = character();
 let strangerScene = createScene(homeSetting)
-strangerScene.generateTransition(introScene, { hours: whole_number(1, 5) });
+strangerScene.actions.splice(0, 0, strangerScene.generateTransition(introScene, { hours: whole_number(2, 6) }));
 plot.push(strangerScene);
 
 for (const scene of plot) {
