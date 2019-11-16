@@ -962,12 +962,6 @@ function evaluateAction(action, properties, toText) {
         result[entry[0]] = entry[1];
     }
 
-    // Ensure state isn't updated until value is constructed from current state
-    // as of random selection.
-    if ("state" in action) {
-        action.state();
-    }
-
     return result;
 }
 
@@ -1041,6 +1035,7 @@ function Scene(setting, povCharacter) {
     this.setting = setting;
     this.pending = [];
     this.povCharacter = povCharacter ? povCharacter : choose(setting.characters);
+    this.actionFilter = null;
 }
 
 Scene.prototype.generateAction = function() {
@@ -1060,6 +1055,16 @@ Scene.prototype.generateAction = function() {
         const result = element(this);
         // Ignore selections that turn out to be invalid.
         if (result) {
+            if (this.actionFilter && !this.actionFilter(result)) {
+                continue;
+            }
+
+            // Ensure state isn't updated until value is constructed from current state
+            // as of random selection.
+            if ("state" in result) {
+                result.state();
+            }
+
             this.actions.push(result);
             break;
         }
