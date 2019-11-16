@@ -1081,6 +1081,10 @@ Scene.prototype.generateTransition = function(previousScene, timePassed) {
         new Action("Just like that, it's {{duration}} later."),
 
         new Action("The next {{duration}} feel like they take forever."),
+
+        new Action("{{duration}} later,"),
+
+        new Action("{{duration}} pass."),
     ], {});
 
     let action = chooseAction(actions);
