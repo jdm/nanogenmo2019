@@ -963,6 +963,7 @@ function evaluateAction(action, properties, toText) {
     const result = {
         toText: toText,
         text: choose(action.text),
+        stateChange: action.state,
     };
 
     for (const entry of Object.entries(properties)) {
@@ -1068,8 +1069,8 @@ Scene.prototype.generateAction = function() {
 
             // Ensure state isn't updated until value is constructed from current state
             // as of random selection.
-            if ("state" in result) {
-                result.state();
+            if ("stateChange" in result && result.stateChange) {
+                result.stateChange();
             }
 
             this.actions.push(result);
