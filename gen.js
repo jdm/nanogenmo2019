@@ -202,8 +202,6 @@ function conjugate(character, verb) {
     }
 }
 
-let allCharacters = [];
-
 function modifyRelationship(char1, char2, name, affection) {
     allCharacters[char1].relationships[char2] = {
         name: name,
@@ -221,10 +219,8 @@ function asymmetricRelationship(name1, char1, affection1, name2, char2, affectio
     modifyRelationship(char2, char1, name2, affection2);
 }
 
-function character(age) {
-    let charGender = choose(gender);
-    let [direct, indirect, possessive, reflexive] = pronouns(charGender);
-
+let allCharacters = [];
+function Character(firstName, lastName, profession, age, gender, emotion) {
     const newChar = allCharacters.length;
     let newRelationships = {};
     allCharacters.forEach((c) => {
@@ -236,23 +232,34 @@ function character(age) {
         };
     });
 
-    allCharacters.push({
-        id: newChar,
-        firstName: firstName(),
-        lastName: lastName(),
-        profession: choose(profession),
-        age: age,
-        gender: charGender,
-        pronouns: {
-            direct: direct,
-            indirect: indirect,
-            possessive: possessive,
-            reflexive: reflexive,
-        },
-        relationships: newRelationships,
-        emotion: choose(emotion),
-    });
-    return newChar;
+    let [direct, indirect, possessive, reflexive] = pronouns(gender);
+
+    this.firstName = firstName;
+    this.lastName = lastName;
+    this.profession = profession;
+    this.age = age;
+    this.gender = gender;
+    this.emotion = emotion;
+    this.relationships = newRelationships;
+    this.pronouns = {
+        direct: direct,
+        indirect: indirect,
+        possessive: possessive,
+        reflexive: reflexive,
+    };
+    this.id = allCharacters.length;
+    allCharacters.push(this);
+}
+
+function character(age) {
+    let charGender = choose(gender);
+    return new Character(
+        firstName(), lastName(),
+        choose(profession),
+        age,
+        choose(gender),
+        choose(emotion)
+    ).id;
 }
 
 function genderedRelationship(char1, char2) {
