@@ -928,14 +928,14 @@ function performAction(scene) {
 
     let actions = [soloActions];
 
-    if (target) {
+    if (target != null) {
         actions.push(targetActions);
     }
 
     let action = chooseAction(actions);
     let properties = {
         'actor': allCharacters[actor],
-        'target': target ? allCharacters[target] : null,
+        'target': target != null ? allCharacters[target] : null,
         'object': object,
         'holding': state.holding,
         'setting': scene.setting,
