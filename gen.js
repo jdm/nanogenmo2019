@@ -975,6 +975,108 @@ function evaluateAction(action, properties, toText) {
     return result;
 }
 
+function introduceSelf(scene, actor) {
+    const actions = new Actions([
+        new Action(
+            [
+                "My name is {{name}}",
+                "I'm {{name}}",
+                "{{name}}",
+                "You can call me {{name}}",
+            ],
+        ),
+    ], {});
+
+    let action = chooseAction(actions);
+    let properties = {
+        actor: allCharacters[actor],
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' says.';
+        return baseText
+            .replace("{{name}}", this.actor.firstName)
+        ;
+    });
+}
+
+function greetEntry(scene, newActor) {
+    const actor = choose(scene.setting.characters);
+
+    const greetRoom = new Actions([
+        new Action(
+            [
+                "Hello everybody",
+                "Hello everyone",
+                "Hi all",
+                "Hi folks",
+                "Oh, hi everyone"
+            ],
+        ),
+
+        new Action(
+            [
+                "Nice to see everyone",
+                "This is a pleasant surprise",
+                "How nice to see you all",
+            ],
+            ({actor, otherCharacters}) => otherCharacters.map((a) => allCharacters[actor].likes(a)).reduce((a, b) => a && b),
+        ),
+
+        new Action(
+            [
+                "Well, this is awkward",
+                "What an unpleasant surprise",
+                "What a pity we meet again",
+            ],
+            ({actor, otherCharacters}) => otherCharacters.map((a) => allCharacters[actor].dislikes(a)).reduce((a, b) => a && b),
+        ),
+
+        new Action(
+                "I don't believe we've met",
+            ({actor, otherCharacters}) => otherCharacters.map((a) => allCharacters[actor].knows(a)).reduce((a, b) => a && b),
+        ),
+    ], {
+        actor: actor,
+        otherCharacters: scene.setting.characters.filter((a) => a != newActor),
+    });
+
+    const actions = new Actions([
+        new Action(
+            [
+                "Hi there",
+                "Hi {{enteredName}}",
+                "Welcome {{enteredName}}",
+                "Hello",
+            ],
+            ({actor, entered}) => allCharacters[actor].knows(entered),
+        ),
+
+        new Action(
+            "Who are you",
+            ({actor, entered}) => !allCharacters[actor].knows(entered),
+            ({scene, entered}) => scene.pending.push(introduceSelf.bind(null, entered)),
+        ),
+    ], {
+        actor: actor,
+        entered: newActor,
+    });
+
+    let possibleActions = [];
+    if (newActor == actor) {
+        possibleActions.push(greetRoom);
+    } else {
+        possibleActions.push(actions);
+    }
+    let action = chooseAction(possibleActions);
+    let properties = {
+        actor: allCharacters[actor],
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' says.';
+        return baseText;
+    });
+}
+
 function modifySetting(scene) {
     const actor = choose(allCharacters.map(c => c.id));
 
@@ -986,7 +1088,10 @@ function modifySetting(scene) {
                 "arrives",
             ],
             ({setting, actor}) => !setting.isIndoors && !setting.isPresent(actor),
-            ({setting, actor}) => setting.addCharacter(actor),
+            ({setting, actor, scene}) => {
+                setting.addCharacter(actor);
+                scene.pending.push(greetEntry.bind(null, scene, actor));
+            }
         ),
 
         // An actor exits an outdoor environment.
@@ -1007,7 +1112,10 @@ function modifySetting(scene) {
                 "walks through the door",
             ],
             ({setting, actor}) => setting.isIndoors && !setting.isPresent(actor),
-            ({setting, actor}) => setting.addCharacter(actor),
+            ({setting, actor, scene}) => {
+                setting.addCharacter(actor);
+                scene.pending.push(greetEntry.bind(null, scene, actor));
+            }
         ),
 
         // An actor exits an indoor environment.
