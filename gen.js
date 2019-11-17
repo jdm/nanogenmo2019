@@ -221,17 +221,6 @@ function asymmetricRelationship(name1, char1, affection1, name2, char2, affectio
 
 let allCharacters = [];
 function Character(firstName, lastName, profession, age, gender, emotion) {
-    const newChar = allCharacters.length;
-    let newRelationships = {};
-    allCharacters.forEach((c) => {
-        c.relationships[newChar] = {
-            value: 0,
-        };
-        newRelationships[c.id] = {
-            value: 0,
-        };
-    });
-
     let [direct, indirect, possessive, reflexive] = pronouns(gender);
 
     this.firstName = firstName;
@@ -240,7 +229,7 @@ function Character(firstName, lastName, profession, age, gender, emotion) {
     this.age = age;
     this.gender = gender;
     this.emotion = emotion;
-    this.relationships = newRelationships;
+    this.relationships = {};
     this.pronouns = {
         direct: direct,
         indirect: indirect,
@@ -249,6 +238,18 @@ function Character(firstName, lastName, profession, age, gender, emotion) {
     };
     this.id = allCharacters.length;
     allCharacters.push(this);
+}
+
+Character.prototype.knows = function(id) {
+    return id in this.relationships;
+}
+
+Character.prototype.likes = function(id) {
+    return this.knows(id) && this.relationships[id].value > 0.5;
+}
+
+Character.prototype.dislikes = function(id) {
+    return this.knows(id) && this.relationships[id].value <= 0.5;
 }
 
 function character(age) {
@@ -540,7 +541,7 @@ function replyToQuestion(scene, actor, target) {
                 "I feel {{emotion}}",
                 "I'm {{emotion}}; thanks for asking",
             ],
-            ({actor, target}) => allCharacters[actor].relationships[target].value > 0.5,
+            ({actor, target}) => allCharacters[actor].likes(target),
         ),
 
         new Action(
@@ -549,7 +550,7 @@ function replyToQuestion(scene, actor, target) {
                 "You're just pretending to care",
                 "Don't ask me that if you don't care",
             ],
-            ({actor, target}) => allCharacters[actor].relationships[target].value <= 0.5,
+            ({actor, target}) => allCharacters[actor].dislikes(target),
         ),
     ], {
         'actor': actor,
@@ -620,7 +621,7 @@ function performInnerDialogue(scene) {
                 "Oh no, not {{targetName}} again",
                 "{{targetName}} is the worst",
             ],
-            ({target}) => target != null && allCharacters[actor].relationships[target].value <= 0.5,
+            ({actor, target}) => target != null && allCharacters[actor].dislikes(target),
         ),
 
         new Action(
@@ -629,10 +630,11 @@ function performInnerDialogue(scene) {
                 "I like {{targetName}}",
                 "I hope {{targetName}} likes me",
             ],
-            ({target}) => target != null && allCharacters[actor].relationships[target].value > 0.5,
+            ({target}) => target != null && allCharacters[actor].likes(target),
         ),
     ], {
         target: target,
+        actor: actor,
     });
 
     let action = chooseAction(actions);
@@ -702,7 +704,7 @@ function performDialogue(scene) {
 
         new Action(
             "I like you",
-            ({actor, target}) => target != null && allCharacters[actor].relationships[target].value > 0.5,
+            ({actor, target}) => target != null && allCharacters[actor].likes(target),
             ({actor, target}) => allCharacters[target].relationships[actor].value *= 1.3,
         ),
 
@@ -711,7 +713,7 @@ function performDialogue(scene) {
                 "I dislike you",
                 "I do not like you",
             ],
-            ({actor, target}) => target != null && allCharacters[actor].relationships[target].value <= 0.5,
+            ({actor, target}) => target != null && allCharacters[actor].dislikes(target),
             ({actor, target}) => allCharacters[target].relationships[actor].value *= 0.6,
         ),
     ], {
