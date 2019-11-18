@@ -1044,9 +1044,11 @@ function greetEntry(scene, newActor) {
         new Action(
             [
                 "Hi there",
+                "Hi there {{enteredName}}",
                 "Hi {{enteredName}}",
                 "Welcome {{enteredName}}",
                 "Hello",
+                "Hello {{enteredName}}",
             ],
             ({actor, entered}) => allCharacters[actor].knows(entered),
         ),
