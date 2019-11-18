@@ -612,8 +612,11 @@ function performInnerDialogue(scene) {
 
     const actions = new Actions([
         new Action(
-            "I wonder why {{targetName}} is so {{targetEmotion}}",
-            ({target}) => target != null,
+            [
+                "I wonder why {{targetName}} is so {{targetEmotion}}",
+                "{{targetName}} seems {{targetEmotion}} today",
+            ],
+            ({actor, target}) => target != null && allCharacters[actor].knows(target),
         ),
 
         new Action(
@@ -680,7 +683,7 @@ function performDialogue(scene) {
                 "You look {{targetEmotion}}",
                 "You look like you are {{targetEmotion}}",
             ],
-            ({target}) => target != null,
+            ({target, actor}) => target != null && allCharacters[actor].knows(target),
         ),
 
         new Action(
