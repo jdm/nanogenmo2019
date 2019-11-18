@@ -1032,8 +1032,8 @@ function greetEntry(scene, newActor) {
         ),
 
         new Action(
-                "I don't believe we've met",
-            ({actor, otherCharacters}) => otherCharacters.map((a) => allCharacters[actor].knows(a)).reduce((a, b) => a && b),
+            "I don't believe we've met",
+            ({actor, otherCharacters}) => otherCharacters.map((a) => !allCharacters[actor].knows(a)).reduce((a, b) => a && b),
         ),
     ], {
         actor: actor,
