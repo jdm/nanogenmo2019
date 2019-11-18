@@ -1076,10 +1076,13 @@ function greetEntry(scene, newActor) {
     let action = chooseAction(possibleActions);
     let properties = {
         actor: allCharacters[actor],
+        target: allCharacters[newActor],
     };
     return evaluateAction(action, properties, function() {
         let baseText = '"' + this.text + '," ' + this.actor.firstName + ' says.';
-        return baseText;
+        return baseText
+            .replace("{{enteredName}}", this.target.firstName)
+        ;
     });
 }
 
@@ -1236,7 +1239,7 @@ Scene.prototype.generateIntro = function() {
 
         new Action("{{actor}} is standing in the {{environment}}."),
 
-        new Action("{{actor}} is standing {{emotion}} in {{environment}}."),
+        new Action("{{actor}} is standing {{emotion}} in the {{environment}}."),
     ], {});
 
     let action = chooseAction(actions);
