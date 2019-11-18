@@ -1056,11 +1056,12 @@ function greetEntry(scene, newActor) {
         new Action(
             "Who are you",
             ({actor, entered}) => !allCharacters[actor].knows(entered),
-            ({scene, entered}) => scene.pending.push(introduceSelf.bind(null, entered)),
+            ({scene, entered}) => scene.pending.push(introduceSelf.bind(null, scene, entered)),
         ),
     ], {
         actor: actor,
         entered: newActor,
+        scene: scene,
     });
 
     let possibleActions = [];
