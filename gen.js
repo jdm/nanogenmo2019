@@ -1276,6 +1276,15 @@ function createScene(setting, povCharacter) {
 let family = createFamily();
 let homeSetting = createSetting();
 
+// Create some non-family characters.
+for (var i = 0; i < whole_number(1, 3); i++) {
+    character(middleAge());
+}
+
+/*for (const c of allCharacters) {
+    console.log(describeCharacter(c));
+}*/
+
 let plot = [];
 
 // introduce characters and setting
@@ -1284,7 +1293,7 @@ plot.push(introScene);
 
 // introduce stranger
 homeSetting.resetCharacters();
-let stranger = character();
+let stranger = character(middleAge());
 let strangerScene = createScene(homeSetting)
 strangerScene.actions.splice(0, 0, strangerScene.generateTransition(introScene, { hours: whole_number(2, 6) }));
 plot.push(strangerScene);
