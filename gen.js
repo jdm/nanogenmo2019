@@ -732,7 +732,7 @@ function performDialogue(scene) {
         'heldObject': scene.setting.characterStates[actor].holding,
     };
     return evaluateAction(action, properties, function() {
-        let baseText = '"' + this.text + '", ' + this.actor.firstName + ' says' + (this.target != null ? ' to ' + this.target.firstName : '') + '.';
+        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' says' + (this.target != null ? ' to ' + this.target.firstName : '') + '.';
         baseText = baseText
             .replace("{{emotion}}", this.actor.emotion)
             .replace("{{environment}}", this.setting.environment)
@@ -992,7 +992,7 @@ function introduceSelf(scene, actor) {
         actor: allCharacters[actor],
     };
     return evaluateAction(action, properties, function() {
-        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' says.';
+        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' replies.';
         return baseText
             .replace("{{name}}", this.actor.firstName)
         ;
