@@ -552,6 +552,15 @@ function replyToQuestion(scene, actor, target) {
             ],
             ({actor, target}) => allCharacters[actor].dislikes(target),
         ),
+
+        new Action(
+            [
+                "We don't know each other",
+                "I'd prefer not to answer that",
+                "That's a very personal question",
+            ],
+            ({actor, target}) => !allCharacters[actor].knows(target),
+        ),
     ], {
         'actor': actor,
         'target': target,
@@ -1014,7 +1023,13 @@ function greetEntry(scene, newActor) {
                 "Hi folks",
                 "Oh, hi everyone"
             ],
+            ({otherCharacters}) => otherCharacters.length > 1,
         ),
+
+        new Action([
+            "Hi there",
+            "Hello",
+        ]),
 
         new Action(
             [
