@@ -11,6 +11,8 @@ let {
     bool,
 } = require("./randomtext");
 
+var pl = require( "./pl/core.js" );
+
 const firstNameStart = [
     "Ar",
     "At",
@@ -237,7 +239,21 @@ function Character(firstName, lastName, profession, age, gender, emotion) {
         reflexive: reflexive,
     };
     this.id = allCharacters.length;
+    this.knowledge = pl.create();
+    for (const o of indoorObject.concat(outdoorObject)) {
+        if (bool()) {
+            this.knowledge.consult("like(" + o.replace(' ', '_') + ").")
+        }
+    }
     allCharacters.push(this);
+}
+
+Character.adjustRelationshipWith = function(id, modifier) {
+    this.relationships[id].value *= modifier;
+}
+
+Character.prototype.likesObject = function(o) {
+    return this.knowledge.query("like(" + o + ").");
 }
 
 Character.prototype.knows = function(id) {
@@ -698,11 +714,17 @@ function performDialogue(scene) {
         new Action(
             [
                 "What a striking {{object}}",
-                "I do not like that {{object}}",
-                "What a horrible {{object}}",
                 "That is quite a {{object}}",
             ],
-            ({object}) => object != null,
+            ({object, actor}) => object != null && allCharacters[actor].likesObject(object),
+        ),
+
+        new Action(
+            [
+                "I do not like that {{object}}",
+                "What a horrible {{object}}",
+            ],
+            ({object, actor}) => object != null && !allCharacters[actor].likesObject(object),
         ),
 
         new Action(
@@ -717,7 +739,7 @@ function performDialogue(scene) {
         new Action(
             "I like you",
             ({actor, target}) => target != null && allCharacters[actor].likes(target),
-            ({actor, target}) => allCharacters[target].relationships[actor].value *= 1.3,
+            ({actor, target}) => allCharacters[target].adjustRelationshipWith(actor, 1.3),
         ),
 
         new Action(
@@ -726,7 +748,7 @@ function performDialogue(scene) {
                 "I do not like you",
             ],
             ({actor, target}) => target != null && allCharacters[actor].dislikes(target),
-            ({actor, target}) => allCharacters[target].relationships[actor].value *= 0.6,
+            ({actor, target}) => allCharacters[target].adjustRelationshipWith(actor, 0.6),
         ),
     ], {
         'actor': actor,
@@ -823,8 +845,13 @@ function performAction(scene) {
                 "passes {{holding}} to {{target}}",
             ],
             ({state, targetState}) => targetState.holding == null && state.holding != null,
-            ({state, targetState}) => {
+            ({state, targetState, target, actor}) => {
                 targetState.holding = state.holding;
+                if (allCharacters[target].likesObject(targetState.holding)) {
+                    allCharacters[target].adjustRelationshipWith(actor, 1.3);
+                } else {
+                    allCharacters[target].adjustRelationshipWith(actor, 0.6);
+                }
                 state.holding = null;
             },
         ),
@@ -849,6 +876,7 @@ function performAction(scene) {
         'state': state,
         'targetState': targetState,
         'target': target,
+        'actor': actor,
     });
 
     const soloActions = new Actions([
