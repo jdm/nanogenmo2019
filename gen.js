@@ -1015,17 +1015,57 @@ function evaluateAction(action, properties, toText) {
     return result;
 }
 
+function introduceSelf2(scene, actor) {
+    const actions = new Actions([
+        new Action(
+            [
+                "I am a {{job}}",
+                "I'm a {{job}}",
+                "I guess you could say I'm a {{job}}",
+            ],
+        ),
+
+        new Action(
+            [
+                "I'm {{age}",
+                "I'm {{age}} years old",
+            ],
+        ),
+    ], {});
+
+    let action = chooseAction(actions);
+    let properties = {
+        actor: allCharacters[actor],
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = '"' + this.text + '."';
+        return baseText
+            .replace("{{job}}", this.actor.profession)
+            .replace("{{age}}", this.actor.age)
+        ;
+    });
+}
+
 function introduceSelf(scene, actor) {
     const actions = new Actions([
         new Action(
             [
                 "My name is {{name}}",
                 "I'm {{name}}",
+                "I am {{name}}",
                 "{{name}}",
                 "You can call me {{name}}",
             ],
+            () => true,
+            ({scene}) => {
+                if (bool()) {
+                    scene.pending.push(introduceSelf2.bind(null, scene, actor));
+                }
+            },
         ),
-    ], {});
+    ], {
+        scene: scene,
+    });
 
     let action = chooseAction(actions);
     let properties = {
