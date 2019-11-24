@@ -248,7 +248,7 @@ function Character(firstName, lastName, profession, age, gender, emotion) {
     allCharacters.push(this);
 }
 
-Character.adjustRelationshipWith = function(id, modifier) {
+Character.prototype.adjustRelationshipWith = function(id, modifier) {
     this.relationships[id].value *= modifier;
 }
 
