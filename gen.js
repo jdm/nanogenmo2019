@@ -820,6 +820,56 @@ function Action(text, condition, state) {
     }
 }
 
+function reactToGift(scene, actor) {
+    const state = scene.setting.characterStates[actor];
+
+    const actions = new Actions([
+        new Action(
+            [
+                "Oh, how wonderful",
+                "I do love a good {{object}}",
+                "Thank you for this {{object}}",
+                "A {{object}}! How wonderful",
+                "I will cherish this {{object}}",
+                "Thank you",
+                "Thanks a lot",
+            ],
+            ({actor, state}) => allCharacters[actor].likesObject(state.holding),
+        ),
+
+        new Action(
+            [
+                "Ew",
+                "How gross",
+                "This is a terrible {{object}}",
+                "I can't believe you would give me such a horrible {{object}}",
+                "I have never wanted a {{object}}",
+                "Don't make me hold that",
+                "Yuck",
+                "Gross",
+                "Ick",
+                "I don't want this {{object}}",
+                "I don't like this {{object}}",
+            ],
+            ({actor, state}) => !allCharacters[actor].likesObject(state.holding),
+        ),
+    ], {
+        'actor': actor,
+        'state': state,
+    });
+
+    let action = chooseAction(actions);
+    let properties = {
+        'actor': allCharacters[actor],
+        'object': state.holding,
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' says.';
+        return baseText
+            .replace("{{object}}", this.object);
+    });
+}
+
 function performAction(scene) {
     const actor = choose(scene.setting.characters);
     if (!actor) {
@@ -845,7 +895,7 @@ function performAction(scene) {
                 "passes {{holding}} to {{target}}",
             ],
             ({state, targetState}) => targetState.holding == null && state.holding != null,
-            ({state, targetState, target, actor}) => {
+            ({state, targetState, target, actor, scene}) => {
                 targetState.holding = state.holding;
                 if (allCharacters[target].likesObject(targetState.holding)) {
                     allCharacters[target].adjustRelationshipWith(actor, 1.3);
@@ -853,6 +903,7 @@ function performAction(scene) {
                     allCharacters[target].adjustRelationshipWith(actor, 0.6);
                 }
                 state.holding = null;
+                scene.pending.push(reactToGift.bind(null, scene, target));
             },
         ),
 
@@ -877,6 +928,7 @@ function performAction(scene) {
         'targetState': targetState,
         'target': target,
         'actor': actor,
+        'scene': scene,
     });
 
     const soloActions = new Actions([
