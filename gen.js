@@ -249,10 +249,16 @@ function Character(firstName, lastName, profession, age, gender, emotion) {
     };
     this.id = allCharacters.length;
     this.knowledge = pl.create();
+    if (!this.knowledge.consult('feels(' + toAtom(this.firstName) + ',' + this.emotion + ').')) {
+        console.error("bad feels knowledge");
+    }
     for (const o of indoorObject.concat(outdoorObject)) {
-        this.knowledge.consult('feels(' + toAtom(this.firstName) + ',' + this.emotion);
         if (bool()) {
-            this.knowledge.consult("like(" + toAtom(o) + ").")
+            let s = "like(" + toAtom(o) + ").";
+            //console.log(this.firstName + " " + s);
+            if (!this.knowledge.consult(s)) {
+                console.error("bad knowledge for like");
+            }
         }
     }
     allCharacters.push(this);
@@ -263,16 +269,39 @@ Character.prototype.adjustRelationshipWith = function(id, modifier) {
 }
 
 Character.prototype.likesObject = async function(o) {
-    return new Promise(resolve => {
+    //console.log(this.firstName + ' checking like(' + toAtom(o) + ')');
+    return new Promise((resolve, reject) => {
         if (!this.knowledge.query("like(" + toAtom(o) + ").")) {
+            console.error('bad likeobject query');
             return resolve(false);
         }
-        this.knowledge.answer(resolve);
+        this.knowledge.answer((a) => {
+            //console.log('got likeObject answer: ' + a);
+            if (typeof a != "boolean" && !pl.type.is_substitution(a)) {
+                console.error('bad likeobject response', a);
+                reject(a);
+            }
+            resolve(pl.type.is_substitution(a));
+        });
     });
 }
 
-Character.prototype.knowsFactAbout = function(factName, actor) {
-    //return this.knowledge.query(factName + "(" + toAtom(actor) + ", X")
+Character.prototype.knowsSpecificFactAbout = function(factName, actor, value) {
+    //console.log(this.firstName + ' checking ' + factName + "(" + toAtom(allCharacters[actor].firstName) + ", " + toAtom(value) + ")");
+    return new Promise((resolve, reject) => {
+        if (!this.knowledge.query(factName + "(" + toAtom(allCharacters[actor].firstName) + ", " + toAtom(value) + ").")) {
+            console.log('bad query for ' + factName);
+            return resolve(false);
+        }
+        this.knowledge.answer((a) => {
+            //console.log('got answer: ' + a);
+            if (typeof a != "boolean" && !pl.type.is_substitution(a)) {
+                console.error('bad answer for ' + factName, a);
+                reject(a);
+            }
+            resolve(pl.type.is_substitution(a));
+        });
+    });
 }
 
 Character.prototype.knows = function(id) {
@@ -288,7 +317,11 @@ Character.prototype.dislikes = function(id) {
 }
 
 Character.prototype.recordFact = function(factName, actor, value) {
-    this.knowledge.consult(factName + '(' + toAtom(allCharacters[actor].firstName) + "," + value);
+    let s = factName + '(' + toAtom(allCharacters[actor].firstName) + "," + value + ').';
+    //console.log(this.firstName + ' recording ' + s);
+    if (!this.knowledge.consult(s)) {
+        console.error("bad knowledge for " + factName);
+    }
 }
 
 function character(age) {
@@ -581,6 +614,7 @@ async function replyToQuestion(scene, actor, target) {
                 "I'm {{emotion}}; thanks for asking",
             ],
             ({actor, target}) => allCharacters[actor].likes(target),
+            ({scene, actor}) => scene.recordFact('feels', actor, allCharacters[actor].emotion),
         ),
 
         new Action(
@@ -603,6 +637,7 @@ async function replyToQuestion(scene, actor, target) {
     ], {
         'actor': actor,
         'target': target,
+        'scene': scene,
     });
 
     let action = await chooseAction(actions);
@@ -664,7 +699,7 @@ async function performInnerDialogue(scene) {
                 "I wonder why {{targetName}} is so {{targetEmotion}}",
                 "{{targetName}} seems {{targetEmotion}} today",
             ],
-            ({actor, target}) => target != null && allCharacters[actor].knows(target),
+            async ({actor, target}) => target != null && await allCharacters[actor].knowsSpecificFactAbout('feels', target, allCharacters[target].emotion),
         ),
 
         new Action(
@@ -724,7 +759,7 @@ async function performDialogue(scene) {
                 "This {{environment}} makes me feel {{emotion}}",
             ],
             () => true,
-            ({scene, actor}) => scene.recordFact('feel', actor, allCharacters[actor].emotion),
+            ({scene, actor}) => scene.recordFact('feels', actor, allCharacters[actor].emotion),
         ),
 
         new Action(
@@ -736,7 +771,7 @@ async function performDialogue(scene) {
                 "You look {{targetEmotion}}",
                 "You look like you are {{targetEmotion}}",
             ],
-            ({target, actor}) => target != null && allCharacters[actor].knows(target),
+            async ({target, actor}) => target != null && await allCharacters[actor].knowsSpecificFactAbout('feels', target, allCharacters[target].emotion),
         ),
 
         new Action(
