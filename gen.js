@@ -252,8 +252,17 @@ Character.prototype.adjustRelationshipWith = function(id, modifier) {
     this.relationships[id].value *= modifier;
 }
 
-Character.prototype.likesObject = function(o) {
-    return this.knowledge.query("like(" + o + ").");
+Character.prototype.likesObject = async function(o) {
+    return new Promise(resolve => {
+        if (!this.knowledge.query("like(" + toAtom(o) + ").")) {
+            return resolve(false);
+        }
+        this.knowledge.answer(resolve);
+    });
+}
+
+Character.prototype.knowsFactAbout = function(factName, actor) {
+    //return this.knowledge.query(factName + "(" + toAtom(actor) + ", X")
 }
 
 Character.prototype.knows = function(id) {
@@ -549,7 +558,7 @@ function describeSetting(setting) {
     return paragraph([result, setting.objects.length ? result2 : []]);
 }
 
-function replyToQuestion(scene, actor, target) {
+async function replyToQuestion(scene, actor, target) {
     const actions = new Actions([
         new Action(
             [
@@ -582,7 +591,7 @@ function replyToQuestion(scene, actor, target) {
         'target': target,
     });
 
-    let action = chooseAction(actions);
+    let action = await chooseAction(actions);
     let properties = {
         'actor': allCharacters[actor],
     };
@@ -595,7 +604,7 @@ function replyToQuestion(scene, actor, target) {
     });
 }
 
-function askQuestion(scene, selections = {}) {
+async function askQuestion(scene, selections = {}) {
     const actor = 'actor' in selections ? selections.actor : choose(scene.setting.characters);
     // Can't have dialogue without any characters present.
     if (!actor) {
@@ -619,7 +628,7 @@ function askQuestion(scene, selections = {}) {
         'target': target,
     });
 
-    let action = chooseAction(actions);
+    let action = await chooseAction(actions);
     let properties = {
         'actor': allCharacters[actor],
         'target': allCharacters[target],
@@ -630,7 +639,7 @@ function askQuestion(scene, selections = {}) {
     });
 }
 
-function performInnerDialogue(scene) {
+async function performInnerDialogue(scene) {
     let actor = scene.povCharacter;
 
     const target = choose(scene.setting.characters.filter((c) => c != actor));
@@ -665,7 +674,7 @@ function performInnerDialogue(scene) {
         actor: actor,
     });
 
-    let action = chooseAction(actions);
+    let action = await chooseAction(actions);
     let properties = {
         actor: allCharacters[actor],
         target: target != null ? allCharacters[target] : null,
@@ -684,7 +693,7 @@ function performInnerDialogue(scene) {
     });
 }
 
-function performDialogue(scene) {
+async function performDialogue(scene) {
     const actor = choose(scene.setting.characters);
     // Can't have dialogue without any characters present.
     if (!actor) {
@@ -716,7 +725,7 @@ function performDialogue(scene) {
                 "What a striking {{object}}",
                 "That is quite a {{object}}",
             ],
-            ({object, actor}) => object != null && allCharacters[actor].likesObject(object),
+            async ({object, actor}) => object != null && await allCharacters[actor].likesObject(object),
         ),
 
         new Action(
@@ -724,7 +733,7 @@ function performDialogue(scene) {
                 "I do not like that {{object}}",
                 "What a horrible {{object}}",
             ],
-            ({object, actor}) => object != null && !allCharacters[actor].likesObject(object),
+            async ({object, actor}) => object != null && !await allCharacters[actor].likesObject(object),
         ),
 
         new Action(
@@ -757,7 +766,7 @@ function performDialogue(scene) {
         'state': scene.setting.characterStates[actor],
     });
 
-    let action = chooseAction(actions);
+    let action = await chooseAction(actions);
     let properties = {
         'actor': allCharacters[actor],
         'target': target != null ? allCharacters[target] : null,
@@ -793,34 +802,35 @@ function Actions(actions, args) {
     });
 }
 
-function chooseAction(actionLists) {
+async function chooseAction(actionLists) {
     if (!Array.isArray(actionLists) && actionLists instanceof Actions) {
         actionLists = [actionLists];
     }
-    let validActions = [];
+    let allActions = [];
+    let resolvableActions = [];
+
     actionLists.forEach(list => {
-        const valid = list.actions.filter(action => {
-            // An action is valid if it has no conditions, or its conditions are true.
-            return !("condition" in action) || action.condition();
+        list.actions.forEach(action => {
+            allActions.push(action);
+            resolvableActions.push(Promise.resolve(action.condition()));
         });
-        validActions.push.apply(validActions, valid);
     });
 
     // Choose one equally probable action from all valid actions.
-    return choose(validActions);
+    return Promise.all(resolvableActions)
+        .then(actions => allActions.filter((action, idx) => actions[idx]))
+        .then(validActions => choose(validActions))
 }
 
 function Action(text, condition, state) {
     this.text = typeof text == "string" ? [text] : text;
-    if (condition) {
-        this.condition = condition;
-    }
+    this.condition = condition || function() { return true };
     if (state) {
         this.state = state;
     }
 }
 
-function reactToGift(scene, actor) {
+async function reactToGift(scene, actor) {
     const state = scene.setting.characterStates[actor];
 
     const actions = new Actions([
@@ -834,7 +844,7 @@ function reactToGift(scene, actor) {
                 "Thank you",
                 "Thanks a lot",
             ],
-            ({actor, state}) => allCharacters[actor].likesObject(state.holding),
+            async ({actor, state}) => await allCharacters[actor].likesObject(state.holding),
         ),
 
         new Action(
@@ -851,14 +861,14 @@ function reactToGift(scene, actor) {
                 "I don't want this {{object}}",
                 "I don't like this {{object}}",
             ],
-            ({actor, state}) => !allCharacters[actor].likesObject(state.holding),
+            async ({actor, state}) => await !allCharacters[actor].likesObject(state.holding),
         ),
     ], {
         'actor': actor,
         'state': state,
     });
 
-    let action = chooseAction(actions);
+    let action = await chooseAction(actions);
     let properties = {
         'actor': allCharacters[actor],
         'object': state.holding,
@@ -870,7 +880,7 @@ function reactToGift(scene, actor) {
     });
 }
 
-function performAction(scene) {
+async function performAction(scene) {
     const actor = choose(scene.setting.characters);
     if (!actor) {
         return null;
@@ -895,9 +905,9 @@ function performAction(scene) {
                 "passes {{holding}} to {{target}}",
             ],
             ({state, targetState}) => targetState.holding == null && state.holding != null,
-            ({state, targetState, target, actor, scene}) => {
+            async ({state, targetState, target, actor, scene}) => {
                 targetState.holding = state.holding;
-                if (allCharacters[target].likesObject(targetState.holding)) {
+                if (await allCharacters[target].likesObject(targetState.holding)) {
                     allCharacters[target].adjustRelationshipWith(actor, 1.3);
                 } else {
                     allCharacters[target].adjustRelationshipWith(actor, 0.6);
@@ -1026,7 +1036,7 @@ function performAction(scene) {
         actions.push(targetActions);
     }
 
-    let action = chooseAction(actions);
+    let action = await chooseAction(actions);
     let properties = {
         'actor': allCharacters[actor],
         'target': target != null ? allCharacters[target] : null,
@@ -1067,7 +1077,7 @@ function evaluateAction(action, properties, toText) {
     return result;
 }
 
-function introduceSelf2(scene, actor) {
+async function introduceSelf2(scene, actor) {
     const actions = new Actions([
         new Action(
             [
@@ -1085,7 +1095,7 @@ function introduceSelf2(scene, actor) {
         ),
     ], {});
 
-    let action = chooseAction(actions);
+    let action = await chooseAction(actions);
     let properties = {
         actor: allCharacters[actor],
     };
@@ -1098,7 +1108,7 @@ function introduceSelf2(scene, actor) {
     });
 }
 
-function introduceSelf(scene, actor) {
+async function introduceSelf(scene, actor) {
     const actions = new Actions([
         new Action(
             [
@@ -1119,7 +1129,7 @@ function introduceSelf(scene, actor) {
         scene: scene,
     });
 
-    let action = chooseAction(actions);
+    let action = await chooseAction(actions);
     let properties = {
         actor: allCharacters[actor],
     };
@@ -1131,7 +1141,7 @@ function introduceSelf(scene, actor) {
     });
 }
 
-function greetEntry(scene, newActor) {
+async function greetEntry(scene, newActor) {
     const actor = choose(scene.setting.characters);
 
     const greetRoom = new Actions([
@@ -1208,7 +1218,7 @@ function greetEntry(scene, newActor) {
     } else {
         possibleActions.push(actions);
     }
-    let action = chooseAction(possibleActions);
+    let action = await chooseAction(possibleActions);
     let properties = {
         actor: allCharacters[actor],
         target: allCharacters[newActor],
@@ -1221,7 +1231,7 @@ function greetEntry(scene, newActor) {
     });
 }
 
-function modifySetting(scene) {
+async function modifySetting(scene) {
     const actor = choose(allCharacters.map(c => c.id));
 
     const actions = new Actions([
@@ -1278,7 +1288,7 @@ function modifySetting(scene) {
         'scene': scene,
     });
 
-    let action = chooseAction([actions]);
+    let action = await chooseAction([actions]);
     let properties = {
         actor: allCharacters[actor],
         setting: scene.setting,
@@ -1300,7 +1310,13 @@ function Scene(setting, povCharacter) {
     this.actionFilter = null;
 }
 
-Scene.prototype.generateAction = function() {
+Scene.prototype.recordFact = function(factName, actor, value) {
+    this.setting.characters.filter((id) => id != actor).forEach((id) => {
+        allCharacters[id].recordFact(factName, actor, value);
+    });
+}
+
+Scene.prototype.generateAction = async function() {
     const possibleElements = [
         performDialogue,
         askQuestion,
@@ -1314,7 +1330,7 @@ Scene.prototype.generateAction = function() {
     while (true) {
         const pendingChoice = chooseAndRemove(this.pending);
         const element = pendingChoice ? pendingChoice : choose(possibleElements);
-        const result = element(this);
+        let result = await element(this);
         // Ignore selections that turn out to be invalid.
         if (result) {
             if (this.actionFilter && !this.actionFilter(result)) {
@@ -1333,7 +1349,7 @@ Scene.prototype.generateAction = function() {
     }
 }
 
-Scene.prototype.generateTransition = function(previousScene, timePassed) {
+Scene.prototype.generateTransition = async function(previousScene, timePassed) {
     const actions = new Actions([
         new Action("{{duration}} pass in the blink of an eye."),
 
@@ -1354,7 +1370,7 @@ Scene.prototype.generateTransition = function(previousScene, timePassed) {
         new Action("{{duration}} pass."),
     ], {});
 
-    let action = chooseAction(actions);
+    let action = await chooseAction(actions);
     let properties = {
         duration: timePassed,
     };
@@ -1366,7 +1382,7 @@ Scene.prototype.generateTransition = function(previousScene, timePassed) {
     });
 }
 
-Scene.prototype.generateIntro = function() {
+Scene.prototype.generateIntro = async function() {
     let actor = this.povCharacter;
 
     const actions = new Actions([
@@ -1377,11 +1393,11 @@ Scene.prototype.generateIntro = function() {
         new Action("{{actor}} is standing {{emotion}} in the {{environment}}."),
     ], {});
 
-    let action = chooseAction(actions);
     let properties = {
         actor: allCharacters[actor],
         environment: this.setting.environment,
     };
+    let action = await chooseAction(actions);
     return evaluateAction(action, properties, function() {
         let baseText = this.text
             .replace("{{actor}}", this.actor.firstName)
@@ -1393,50 +1409,54 @@ Scene.prototype.generateIntro = function() {
     });
 }
 
-function createScene(setting, povCharacter) {
+async function createScene(setting, povCharacter) {
     let scene = new Scene(setting, povCharacter);
     if (povCharacter != null && scene.characters.indexOf(povCharacter) == -1) {
         scene.addCharacter(povCharacter);
     }
-    scene.actions.push(scene.generateIntro());
+    let result = await scene.generateIntro();
+    scene.actions.push(result);
     const numElements = whole_number(10, 20);
     while (scene.actions.length < numElements) {
-        scene.generateAction();
+        await scene.generateAction();
     }
     return scene;
 }
 
 /////////////////
 
-let family = createFamily();
-let homeSetting = createSetting();
+async function create() {
+    let family = createFamily();
+    let homeSetting = createSetting();
 
-// Create some non-family characters.
-for (var i = 0; i < whole_number(1, 3); i++) {
-    character(middleAge());
+    // Create some non-family characters.
+    for (var i = 0; i < whole_number(1, 3); i++) {
+        character(middleAge());
+    }
+
+    /*for (const c of allCharacters) {
+      console.log(describeCharacter(c));
+      }*/
+
+    let plot = [];
+
+    // introduce characters and setting
+    let introScene = await createScene(homeSetting);
+    plot.push(introScene);
+
+    // introduce stranger
+    homeSetting.resetCharacters();
+    let stranger = character(middleAge());
+    let strangerScene = await createScene(homeSetting)
+    strangerScene.actions.splice(0, 0, await strangerScene.generateTransition(introScene, { hours: whole_number(2, 6) }));
+    plot.push(strangerScene);
+
+    for (const scene of plot) {
+        console.log(paragraph(scene.actions.map((e) => e.toText())));
+        console.log();
+    }
+
+    console.log("The end.")
 }
 
-/*for (const c of allCharacters) {
-    console.log(describeCharacter(c));
-}*/
-
-let plot = [];
-
-// introduce characters and setting
-let introScene = createScene(homeSetting);
-plot.push(introScene);
-
-// introduce stranger
-homeSetting.resetCharacters();
-let stranger = character(middleAge());
-let strangerScene = createScene(homeSetting)
-strangerScene.actions.splice(0, 0, strangerScene.generateTransition(introScene, { hours: whole_number(2, 6) }));
-plot.push(strangerScene);
-
-for (const scene of plot) {
-    console.log(paragraph(scene.actions.map((e) => e.toText())));
-    console.log();
-}
-
-console.log("The end.")
-
+create();
