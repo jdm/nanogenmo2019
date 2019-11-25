@@ -1109,7 +1109,7 @@ async function introduceSelf2(scene, actor) {
 
         new Action(
             [
-                "I'm {{age}",
+                "I'm {{age}}",
                 "I'm {{age}} years old",
             ],
         ),
