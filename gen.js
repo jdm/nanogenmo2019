@@ -221,6 +221,15 @@ function asymmetricRelationship(name1, char1, affection1, name2, char2, affectio
     modifyRelationship(char2, char1, name2, affection2);
 }
 
+function toAtom(s) {
+    return s
+        .toLowerCase()
+        .replace(" ", "_")
+        .replace("-", "_")
+        .replace("'", "_")
+    ;
+}
+
 let allCharacters = [];
 function Character(firstName, lastName, profession, age, gender, emotion) {
     let [direct, indirect, possessive, reflexive] = pronouns(gender);
@@ -241,8 +250,9 @@ function Character(firstName, lastName, profession, age, gender, emotion) {
     this.id = allCharacters.length;
     this.knowledge = pl.create();
     for (const o of indoorObject.concat(outdoorObject)) {
+        this.knowledge.consult('feels(' + toAtom(this.firstName) + ',' + this.emotion);
         if (bool()) {
-            this.knowledge.consult("like(" + o.replace(' ', '_') + ").")
+            this.knowledge.consult("like(" + toAtom(o) + ").")
         }
     }
     allCharacters.push(this);
@@ -275,6 +285,10 @@ Character.prototype.likes = function(id) {
 
 Character.prototype.dislikes = function(id) {
     return this.knows(id) && this.relationships[id].value <= 0.5;
+}
+
+Character.prototype.recordFact = function(factName, actor, value) {
+    this.knowledge.consult(factName + '(' + toAtom(allCharacters[actor].firstName) + "," + value);
 }
 
 function character(age) {
@@ -708,8 +722,13 @@ async function performDialogue(scene) {
             [
                 "I feel {{emotion}}",
                 "This {{environment}} makes me feel {{emotion}}",
-                "I am {{age}} but I feel {{randomAge}}",
-            ]
+            ],
+            () => true,
+            ({scene, actor}) => scene.recordFact('feel', actor, allCharacters[actor].emotion),
+        ),
+
+        new Action(
+            "I am {{age}} but I feel {{randomAge}}",
         ),
 
         new Action(
@@ -764,6 +783,7 @@ async function performDialogue(scene) {
         'target': target,
         'object': object,
         'state': scene.setting.characterStates[actor],
+        'scene': scene,
     });
 
     let action = await chooseAction(actions);
