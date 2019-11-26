@@ -296,11 +296,25 @@ Character.prototype.likesObject = async function(o) {
     });
 }
 
+Character.prototype.knowsAnyFactAbout = function(factName, actor) {
+    return new Promise((resolve, reject) => {
+        let q = factName + "(" + toAtom(allCharacters[actor].firstName) + ", X).";
+        if (!this.knowledge.query(q)) {
+            console.error("bad query for " + q);
+            return resolve(false);
+        }
+        this.knowledge.answer((a) => {
+            //console.log(q, a);
+            resolve(pl.type.is_substitution(a))
+        });
+    });
+}
+
 Character.prototype.knowsSpecificFactAbout = function(factName, actor, value) {
     //console.log(this.firstName + ' checking ' + factName + "(" + toAtom(allCharacters[actor].firstName) + ", " + toAtom(value) + ")");
     return new Promise((resolve, reject) => {
         if (!this.knowledge.query(factName + "(" + toAtom(allCharacters[actor].firstName) + ", " + toAtom(value) + ").")) {
-            console.log('bad query for ' + factName);
+            console.error('bad query for ' + factName);
             return resolve(false);
         }
         this.knowledge.answer((a) => {
@@ -674,9 +688,30 @@ async function askQuestion(scene, selections = {}) {
 
     const actions = new Actions([
         new Action(
-            "How are you",
+            [
+                "How are you",
+                "How are you doing",
+                "How is it going",
+                "How are things",
+            ],
             () => true,
             ({scene, actor, target}) => scene.pending.push(replyToQuestion.bind(null, scene, target, actor)),
+        ),
+
+        new Action(
+            [
+                "Aren't you a little old to be a {{job}}",
+                "Aren't you a bit young to be a {{job}}",
+            ],
+            async ({actor, target}) => {
+                return await allCharacters[actor].knowsAnyFactAbout('profession', target) &&
+                    await allCharacters[actor].knowsAnyFactAbout('age', target);
+            },
+            ({actor, target}) => {
+                if (allCharacters[target].knows(actor)) {
+                    allCharacters[target].adjustRelationshipWith(actor, 0.6);
+                }
+            }
         ),
     ], {
         'scene': scene,
@@ -822,6 +857,33 @@ async function performDialogue(scene) {
             ({actor, target}) => target != null && allCharacters[actor].dislikes(target),
             ({actor, target}) => allCharacters[target].adjustRelationshipWith(actor, 0.6),
         ),
+
+        new Action(
+            [
+                "I would never have guessed you are a {{targetJob}}",
+                "Being a {{targetJob}} sounds hard",
+                "Being a {{targetJob}} sounds interesting",
+            ],
+            async ({actor, target}) => target != null && await allCharacters[actor].knowsAnyFactAbout('profession', target),
+        ),
+
+        new Action(
+            [
+                "I remember when I was {{targetAge}}",
+                "Ah, to be {{targetAge}} again",
+                "Enjoy being {{targetAge}} while you can",
+            ],
+            async ({actor, target}) => target != null && await allCharacters[actor].knowsAnyFactAbout('age', target) && allCharacters[actor].age > allCharacters[target].age,
+        ),
+
+        new Action(
+            [
+                "I can't wait to be {{targetAge}}",
+                "It must be so nice to be {{targetAge}}",
+                "I am looking forward to being {{targetAge}} like you",
+            ],
+            async ({actor, target}) => target != null && await allCharacters[actor].knowsAnyFactAbout('age', target) && allCharacters[actor].age < allCharacters[target].age,
+        ),
     ], {
         'actor': actor,
         'target': target,
@@ -849,7 +911,11 @@ async function performDialogue(scene) {
             .replace("{{heldObject}}", this.heldObject)
         ;
         if (this.target != null) {
-            baseText = baseText.replace("{{targetEmotion}}", this.target.emotion);
+            baseText = baseText
+                .replace("{{targetEmotion}}", this.target.emotion)
+                .replace("{{targetAge}}", this.target.age)
+                .replace("{{targetJob}}", this.target.profession)
+            ;
         }
         return baseText;
     });
@@ -1196,7 +1262,7 @@ async function introduceSelf(scene, actor) {
                 }
                 for (const c of scene.setting.characters.filter((id) => id != actor)) {
                     if (!allCharacters[c].knows(actor)) {
-                        allCharacters[c].relationships[actor] = 0.5;
+                        allCharacters[c].relationships[actor] = { value: 0.5 };
                     }
                 }
             },
