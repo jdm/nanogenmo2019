@@ -275,6 +275,9 @@ Character.prototype.record = function(name, args) {
 }
 
 Character.prototype.adjustRelationshipWith = function(id, modifier) {
+    if (!(id in this.relationships)) {
+        this.relationships[id] = { value: 0.5 };
+    }
     this.relationships[id].value *= modifier;
 }
 
