@@ -222,6 +222,9 @@ function asymmetricRelationship(name1, char1, affection1, name2, char2, affectio
 }
 
 function toAtom(s) {
+    if (typeof s != "string") {
+        return s;
+    }
     return s
         .toLowerCase()
         .replace(" ", "_")
@@ -249,19 +252,26 @@ function Character(firstName, lastName, profession, age, gender, emotion) {
     };
     this.id = allCharacters.length;
     this.knowledge = pl.create();
-    if (!this.knowledge.consult('feels(' + toAtom(this.firstName) + ',' + this.emotion + ').')) {
-        console.error("bad feels knowledge");
-    }
+
+    this.record("feels", [this.firstName, this.emotion]);
+    this.record("age", [this.firstName, this.age]);
+    this.record("profession", [this.firstName, this.profession]);
+
     for (const o of indoorObject.concat(outdoorObject)) {
         if (bool()) {
-            let s = "like(" + toAtom(o) + ").";
             //console.log(this.firstName + " " + s);
-            if (!this.knowledge.consult(s)) {
-                console.error("bad knowledge for like");
-            }
+            this.record("like", [o]);
         }
     }
     allCharacters.push(this);
+}
+
+Character.prototype.record = function(name, args) {
+    let allArgs = args.map((a) => toAtom(a)).join(",");
+    let s = name + "(" + allArgs + ").";
+    if (!this.knowledge.consult(s)) {
+        console.error("bad knowledge: " + s);
+    }
 }
 
 Character.prototype.adjustRelationshipWith = function(id, modifier) {
@@ -317,11 +327,8 @@ Character.prototype.dislikes = function(id) {
 }
 
 Character.prototype.recordFact = function(factName, actor, value) {
-    let s = factName + '(' + toAtom(allCharacters[actor].firstName) + "," + value + ').';
     //console.log(this.firstName + ' recording ' + s);
-    if (!this.knowledge.consult(s)) {
-        console.error("bad knowledge for " + factName);
-    }
+    this.record(factName, [allCharacters[actor].firstName, value]);
 }
 
 function character(age) {
@@ -764,6 +771,8 @@ async function performDialogue(scene) {
 
         new Action(
             "I am {{age}} but I feel {{randomAge}}",
+            () => true,
+            ({scene, actor}) => scene.recordFact('age', actor, allCharacters[actor].age),
         ),
 
         new Action(
@@ -1140,6 +1149,8 @@ async function introduceSelf2(scene, actor) {
                 "I'm a {{job}}",
                 "I guess you could say I'm a {{job}}",
             ],
+            () => true,
+            ({scene, actor}) => scene.recordFact('profession', actor, allCharacters[actor].profession),
         ),
 
         new Action(
@@ -1147,8 +1158,13 @@ async function introduceSelf2(scene, actor) {
                 "I'm {{age}}",
                 "I'm {{age}} years old",
             ],
+            () => true,
+            ({scene, actor}) => scene.recordFact('age', actor, allCharacters[actor].age),
         ),
-    ], {});
+    ], {
+        scene: scene,
+        actor: actor,
+    });
 
     let action = await chooseAction(actions);
     let properties = {
@@ -1174,14 +1190,20 @@ async function introduceSelf(scene, actor) {
                 "You can call me {{name}}",
             ],
             () => true,
-            ({scene}) => {
+            ({scene, actor}) => {
                 if (bool()) {
                     scene.pending.push(introduceSelf2.bind(null, scene, actor));
+                }
+                for (const c of scene.setting.characters.filter((id) => id != actor)) {
+                    if (!allCharacters[c].knows(actor)) {
+                        allCharacters[c].relationships[actor] = 0.5;
+                    }
                 }
             },
         ),
     ], {
         scene: scene,
+        actor: actor,
     });
 
     let action = await chooseAction(actions);
