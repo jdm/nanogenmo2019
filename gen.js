@@ -355,7 +355,7 @@ function character(age) {
         choose(profession),
         age,
         choose(gender),
-        choose(emotion)
+        choose(positiveEmotions.concat(negativeEmotions))
     ).id;
 }
 
@@ -433,20 +433,22 @@ function createFamily() {
     return family;
 }
 
-let emotion = [
-    "sad",
+let positiveEmotions = [
     "happy",
-    "disgruntled",
     "amorous",
-    "distraught",
-    "bored",
     "excited",
     "delighted",
-    "excited",
+    "rapturous",
+];
+
+let negativeEmotions = [
+    "sad",
+    "disgruntled",
+    "distraught",
+    "bored",
     "tired",
     "frustrated",
     "upset",
-    "rapturous",
     "lonely",
     "nervous",
 ];
@@ -886,6 +888,22 @@ async function performDialogue(scene) {
                 "I am looking forward to being {{targetAge}} like you",
             ],
             async ({actor, target}) => target != null && await allCharacters[actor].knowsAnyFactAbout('age', target) && allCharacters[actor].age < allCharacters[target].age,
+        ),
+
+        new Action(
+            [
+                "Not everybody is as {{targetEmotion}} as you",
+                "You should try being a bit less {{targetEmotion}}",
+                "It's a bit much when you're so {{targetEmotion}}",
+            ],
+            async ({actor, target}) => {
+                return target != null &&
+                    (await allCharacters[actor].knowsAnyFactAbout('feels', target)) &&
+                    // If one emotion is not present in the list, we'll get -1 * something.
+                    (positiveEmotions.indexOf(allCharacters[actor].emotion) *
+                     positiveEmotions.indexOf(allCharacters[target].emotion) < 0);
+            },
+            ({actor, target}) => allCharacters[target].adjustRelationshipWith(actor, 0.6),
         ),
     ], {
         'actor': actor,
