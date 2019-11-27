@@ -1616,7 +1616,9 @@ Scene.prototype.generateAction = async function() {
             }
 
             let proposed = result.toText();
-            if (this.actions.indexOf(proposed) != -1) {
+            // Always let pending responses through, even if they're duplicates.
+            if (pendingChoice == null && this.actions.indexOf(proposed) != -1) {
+                //console.log('skipping repeated ' + proposed);
                 continue;
             }
 
