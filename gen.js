@@ -631,10 +631,10 @@ function describeSetting(setting) {
     return paragraph([result, setting.objects.length ? result2 : []]);
 }
 
-async function exactAction(text) {
+async function exactAction(text, state) {
     // TODO: support providing a state update callback.
     const actions = new Actions([
-        new Action(text)
+        new Action(text, () => true, state)
     ], {});
     let action = await chooseAction(actions);
     let properties = {};
@@ -979,8 +979,42 @@ async function performDialogue(scene) {
             ({scene, actor, target}) => {
                 scene.pending.push(respondToOffer.bind(
                     null, scene, target, actor,
-                    exactAction.bind(null, '"Excellent!" ' + allCharacters[actor].firstName + ' says.'),
-                    exactAction.bind(null, '"What a shame!" ' + allCharacters[actor].firstName + ' says.'),
+                    exactAction.bind(
+                        null,
+                        '"Excellent!" ' + allCharacters[actor].firstName + ' says.',
+                        () => allCharacters[actor].adjustRelationshipWith(target, 1.3),
+                    ),
+                    exactAction.bind(
+                        null,
+                        '"What a shame!" ' + allCharacters[actor].firstName + ' says.',
+                        () => allCharacters[actor].adjustRelationshipWith(target, 0.6),
+                    ),
+                ));
+            }
+        ),
+
+        new Action(
+            [
+                "I want to give you this {{heldObject}}",
+                "Do you want this {{heldObject}}",
+            ],
+            ({actor, target, state, targetState}) => target != null && state.holding != null && targetState == null,
+            ({scene, actor, target, state, targetState}) => {
+                scene.pending.push(respondToOffer.bind(
+                    null, scene, target, actor,
+                    exactAction.bind(
+                        null,
+                        allCharacters[actor].firstName + 'gives ' + allCharacters[target].firstName + ' the ' + state.holding + ' .',
+                        () => {
+                            targetState.holding = state.holding;
+                            state.holding = null;
+                        }
+                    ),
+                    exactAction.bind(
+                        null,
+                        '"Your loss," ' + allCharacters[actor].firstName + ' says.',
+                        () => allCharacters[actor].adjustRelationshipWith(target, 0.6),
+                    ),
                 ));
             }
         ),
@@ -989,6 +1023,7 @@ async function performDialogue(scene) {
         'target': target,
         'object': object,
         'state': scene.setting.characterStates[actor],
+        'targetState': target != null ? scene.setting.characterStates[target] : null,
         'scene': scene,
     });
 
