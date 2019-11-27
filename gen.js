@@ -804,13 +804,18 @@ async function performDialogue(scene) {
             [
                 "I feel {{emotion}}",
                 "This {{environment}} makes me feel {{emotion}}",
+                "I feel like I've been {{emotion}} for days now",
             ],
             () => true,
             ({scene, actor}) => scene.recordFact('feels', actor, allCharacters[actor].emotion),
         ),
 
         new Action(
-            "I am {{age}} but I feel {{randomAge}}",
+            [
+                "I am {{age}} but I feel {{randomAge}}",
+                "It's not easy being {{age}}",
+                "I'm living my best life as a {{age}} year old",
+            ],
             () => true,
             ({scene, actor}) => scene.recordFact('age', actor, allCharacters[actor].age),
         ),
@@ -827,6 +832,7 @@ async function performDialogue(scene) {
             [
                 "What a striking {{object}}",
                 "That is quite a {{object}}",
+                "Ooh, a {{object}}",
             ],
             async ({object, actor}) => object != null && await allCharacters[actor].likesObject(object),
         ),
@@ -835,6 +841,7 @@ async function performDialogue(scene) {
             [
                 "I do not like that {{object}}",
                 "What a horrible {{object}}",
+                "Ew, a {{object}}",
             ],
             async ({object, actor}) => object != null && !await allCharacters[actor].likesObject(object),
         ),
@@ -849,7 +856,12 @@ async function performDialogue(scene) {
         ),
 
         new Action(
-            "I like you",
+            [
+                "I like you",
+                "You're great",
+                "You're the best",
+                "I like you a lot",
+            ],
             ({actor, target}) => target != null && allCharacters[actor].likes(target),
             ({actor, target}) => allCharacters[target].adjustRelationshipWith(actor, 1.3),
         ),
@@ -858,6 +870,7 @@ async function performDialogue(scene) {
             [
                 "I dislike you",
                 "I do not like you",
+                "I am not fond of you",
             ],
             ({actor, target}) => target != null && allCharacters[actor].dislikes(target),
             ({actor, target}) => allCharacters[target].adjustRelationshipWith(actor, 0.6),
