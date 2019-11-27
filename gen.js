@@ -1599,7 +1599,7 @@ async function createScene(setting, povCharacter) {
     let result = await scene.generateIntro();
     scene.actions.push(result.toText());
     const numElements = whole_number(10, 20);
-    while (scene.actions.length < numElements) {
+    while (scene.actions.length < numElements || scene.pending.length) {
         await scene.generateAction();
     }
     return scene;
