@@ -1514,13 +1514,18 @@ Scene.prototype.generateAction = async function() {
                 continue;
             }
 
+            let proposed = result.toText();
+            if (this.actions.indexOf(proposed) != -1) {
+                continue;
+            }
+
             // Ensure state isn't updated until value is constructed from current state
             // as of random selection.
             if ("stateChange" in result && result.stateChange) {
                 result.stateChange();
             }
 
-            this.actions.push(result);
+            this.actions.push(proposed);
             break;
         }
     }
@@ -1592,7 +1597,7 @@ async function createScene(setting, povCharacter) {
         scene.addCharacter(povCharacter);
     }
     let result = await scene.generateIntro();
-    scene.actions.push(result);
+    scene.actions.push(result.toText());
     const numElements = whole_number(10, 20);
     while (scene.actions.length < numElements) {
         await scene.generateAction();
@@ -1625,11 +1630,11 @@ async function create() {
     homeSetting.resetCharacters();
     let stranger = character(middleAge());
     let strangerScene = await createScene(homeSetting)
-    strangerScene.actions.splice(0, 0, await strangerScene.generateTransition(introScene, { hours: whole_number(2, 6) }));
+    strangerScene.actions.splice(0, 0, (await strangerScene.generateTransition(introScene, { hours: whole_number(2, 6) })).toText());
     plot.push(strangerScene);
 
     for (const scene of plot) {
-        console.log(paragraph(scene.actions.map((e) => e.toText())));
+        console.log(paragraph(scene.actions));
         console.log();
     }
 
