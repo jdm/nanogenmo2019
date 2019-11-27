@@ -631,6 +631,60 @@ function describeSetting(setting) {
     return paragraph([result, setting.objects.length ? result2 : []]);
 }
 
+async function exactAction(text) {
+    // TODO: support providing a state update callback.
+    const actions = new Actions([
+        new Action(text)
+    ], {});
+    let action = await chooseAction(actions);
+    let properties = {};
+    return evaluateAction(action, properties, function() {
+        return this.text;
+    });
+}
+
+async function respondToOffer(scene, actor, offeree, accept, decline) {
+    const actions = new Actions([
+        new Action(
+            [
+                "Ok",
+                "Sure",
+                "Yes",
+                "Alright",
+            ],
+            // If there's a relationship, positive response is proportional to how likable.
+            ({actor, target}) => !allCharacters[actor].knows(target) || floating_point_number(0.0, 1.0) < allCharacters[actor].relationships[target].value,
+            ({scene, actor, target}) => scene.pending.push(accept),
+        ),
+
+        new Action(
+            [
+                "No",
+                "No way",
+                "Sorry, no",
+                "Nuh-uh",
+                "Nope",
+            ],
+            // If there's a relationship, negative response is inversely proportional to how likable.
+            ({actor, target}) => !allCharacters[actor].knows(target) || floating_point_number(0.0, 1.0) > allCharacters[actor].relationships[target].value,
+            ({scene, actor, target}) => scene.pending.push(decline),
+        ),
+    ], {
+        scene: scene,
+        actor: actor,
+        target: offeree,
+    });
+
+    let action = await chooseAction(actions);
+    let properties = {
+        'actor': allCharacters[actor],
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' replies.';
+        return baseText;
+    });
+}
+
 async function replyToQuestion(scene, actor, target) {
     const actions = new Actions([
         new Action(
@@ -917,6 +971,18 @@ async function performDialogue(scene) {
                      positiveEmotions.indexOf(allCharacters[target].emotion) < 0);
             },
             ({actor, target}) => allCharacters[target].adjustRelationshipWith(actor, 0.6),
+        ),
+
+        new Action(
+            "I want to hold your hand",
+            ({actor, target}) => target != null && allCharacters[actor].knows(target),
+            ({scene, actor, target}) => {
+                scene.pending.push(respondToOffer.bind(
+                    null, scene, target, actor,
+                    exactAction.bind(null, '"Excellent!" ' + allCharacters[actor].firstName + ' says.'),
+                    exactAction.bind(null, '"What a shame!" ' + allCharacters[actor].firstName + ' says.'),
+                ));
+            }
         ),
     ], {
         'actor': actor,
