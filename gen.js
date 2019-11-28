@@ -336,11 +336,11 @@ Character.prototype.knows = function(id) {
 }
 
 Character.prototype.likes = function(id) {
-    return this.knows(id) && this.relationships[id].value > 0.5;
+    return this.knows(id) && this.relationships[id].value >= 0.5;
 }
 
 Character.prototype.dislikes = function(id) {
-    return this.knows(id) && this.relationships[id].value <= 0.5;
+    return this.knows(id) && this.relationships[id].value < 0.5;
 }
 
 Character.prototype.recordFact = function(factName, actor, value) {
