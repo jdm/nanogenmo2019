@@ -653,6 +653,56 @@ async function exactAction(text, state) {
     });
 }
 
+async function yesNoResponse(actor) {
+    const actions = new Actions([
+        new Action(
+            [
+                "Absolutely",
+                "Yes",
+                "Yes, of course",
+                "For sure",
+                "Undoubtedly",
+                "You bet",
+                "Unquestionably",
+                "Of course",
+                "Probably",
+                "Maybe",
+                "Most likely",
+                "Most likely, yes",
+                "I have no doubt",
+                "I believe so",
+                "I think so",
+            ],
+        ),
+
+        new Action(
+            [
+                "Absolutely not",
+                "No",
+                "Nope",
+                "Not at all",
+                "I guess not",
+                "Definitely not",
+                "Maybe not",
+                "Probably not",
+                "Possibly not",
+                "I don't think so",
+                "Of course not",
+                "No way",
+            ],
+        ),
+    ], {});
+
+    let action = await chooseAction(actions);
+    let properties = {
+        'actor': allCharacters[actor],
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' responds.';
+        return baseText;
+    });
+}
+
 async function respondToOffer(scene, actor, offeree, accept, decline) {
     const actions = new Actions([
         new Action(
@@ -802,6 +852,26 @@ async function askQuestion(scene, selections = {}) {
                 }
             }
         ),
+
+        new Action(
+            [
+                "Have you ever been in love",
+                "Do you believe in soulmates",
+                "Is there an afterlife",
+                "Is the universe infinite",
+                "Do you think people are inherently good",
+                "Is there such a thing as universal morality",
+                "Have you ever read something that fundamentally changed your worldview",
+                "Would you try to rescue me if my life were in danger",
+                "Does your life satisfy you",
+                "Is there a purpose to staying alive",
+                "Do you have any regrets",
+                "Have you found meaning in your life",
+                "Are there aliens out there in the universe",
+            ],
+            () => true,
+            ({target, scene}) => scene.pending.push(yesNoResponse.bind(null, target)),
+        ),
     ], {
         'scene': scene,
         'actor': actor,
@@ -816,7 +886,7 @@ async function askQuestion(scene, selections = {}) {
         'other': other != null ? allCharacters[other] : null,
     };
     return evaluateAction(action, properties, function() {
-        let baseText = '"' + this.text + '?", ' + this.actor.firstName + ' asks ' + this.target.firstName + '.';
+        let baseText = '"' + this.text + '?" ' + this.actor.firstName + ' asks ' + this.target.firstName + '.';
         if (this.other) {
             baseText = baseText.replace('{{thirdParty}}', this.other.firstName);
         }
