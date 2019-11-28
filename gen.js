@@ -632,7 +632,6 @@ function describeSetting(setting) {
 }
 
 async function exactAction(text, state) {
-    // TODO: support providing a state update callback.
     const actions = new Actions([
         new Action(text, () => true, state)
     ], {});
@@ -745,6 +744,8 @@ async function askQuestion(scene, selections = {}) {
         return null;
     }
 
+    const other = choose(scene.setting.characters.filter(c => c != actor && c != target));
+
     const actions = new Actions([
         new Action(
             [
@@ -772,20 +773,44 @@ async function askQuestion(scene, selections = {}) {
                 }
             }
         ),
+
+        new Action(
+            [
+                "Do you know {{thirdParty}}",
+                "Have you met {{thirdParty}}",
+                "May I introduce {{thirdParty}}",
+            ],
+            ({actor, other}) => other != null && allCharacters[actor].knows(other),
+            ({actor, target, other, scene}) => {
+                if (allCharacters[target].knows(other)) {
+                    scene.pending.push(exactAction.bind(null, "\"Yes, we've met,\" " + allCharacters[target].firstName + " replies.", () => {}));
+                } else {
+                    allCharacters[target].relationships[other] = { value: 0.5 };
+                    scene.pending.push(exactAction.bind(null, "\"Nice to meet you " + allCharacters[other].firstName +",\" " + allCharacters[target].firstName + " says.", () => {}));
+                    scene.pending.push(introduceSelf.bind(null, scene, target));
+                }
+            }
+        ),
     ], {
         'scene': scene,
         'actor': actor,
         'target': target,
+        'other': other,
     });
 
     let action = await chooseAction(actions);
     let properties = {
         'actor': allCharacters[actor],
         'target': allCharacters[target],
+        'other': other != null ? allCharacters[other] : null,
     };
     return evaluateAction(action, properties, function() {
         let baseText = '"' + this.text + '?", ' + this.actor.firstName + ' asks ' + this.target.firstName + '.';
-        return baseText;
+        if (this.other) {
+            baseText = baseText.replace('{{thirdParty}}', this.other.firstName);
+        }
+        return baseText
+        ;
     });
 }
 
@@ -827,6 +852,32 @@ async function performInnerDialogue(scene) {
             ],
             ({target}) => target != null && allCharacters[actor].likes(target),
         ),
+
+        new Action(
+            [
+                "I wish I was a {{targetProfession}} like {{targetName}}",
+                "I don't know if I could be a {{targetProfession}} like {{targetName}}",
+            ],
+            async ({actor, target}) => target != null && await allCharacters[actor].knowsAnyFactAbout('profession', target),
+        ),
+
+        new Action(
+            [
+                "I bet {{targetName}} is a great {{targetProfession}}",
+                "{{targetName}} must be a good {{targetProfession}}",
+                "I'm sure {{targetName}} is a talented {{targetProfession}}",
+            ],
+            async ({actor, target}) => target != null && (await allCharacters[actor].knowsAnyFactAbout('profession', target)) && allCharacters[actor].likes(target),
+        ),
+
+        new Action(
+            [
+                "I bet {{targetName}} is a terrible {{targetProfession}}",
+                "{{targetName}} can't be that good a {{targetProfession}}",
+                "I'm surprised {{targetName}} ever became a {{targetProfession}}",
+            ],
+            async ({actor, target}) => target != null && (await allCharacters[actor].knowsAnyFactAbout('profession', target)) && allCharacters[actor].dislikes(target),
+        ),
     ], {
         target: target,
         actor: actor,
@@ -845,6 +896,7 @@ async function performInnerDialogue(scene) {
             baseText = baseText
                 .replace("{{targetEmotion}}", this.target.emotion)
                 .replace("{{targetName}}", this.target.firstName)
+                .replace("{{targetProfession}}", this.target.profession)
             ;
         }
         return baseText;
