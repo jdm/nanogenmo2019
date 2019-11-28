@@ -1182,20 +1182,50 @@ async function performAction(scene) {
             },
         ),
 
-        new Action("moves towards {{target}} {{emotion}}"),
-        new Action("edges away from {{target}} {{emotion}}"),
+        new Action(
+            [
+                "moves towards {{target}} {{emotion}}",
+                "steps closer towards {{target}}",
+                "takes a step toward {{target}}",
+            ]
+        ),
+        new Action(
+            [
+                "edges away from {{target}} {{emotion}}",
+                "moves away from {{target}}",
+                "takes a step back from {{target}}",
+            ]
+        ),
 
         // Look at another actor
         new Action(
-            "gazes at {{target}}",
+            [
+                "gazes at {{target}}",
+                "looks intently at {{target}}",
+                "looks at {{target}} consideringly",
+            ],
             ({state, target}) => state.eyes == "open" && state.lookingAt != target,
             ({state, target}) => state.lookingAt = target,
         ),
 
         // Look away from another actor
         new Action(
-            "looks at {{target}} then quickly looks away",
+            [
+                "looks at {{target}} then quickly looks away",
+                "darts a glance at {{target}}",
+                "briefly meets {{target}}'s gaze before looking elsewhere",
+            ],
             ({state, target}) => state.eyes == "open" && state.lookingAt != target,
+            ({state}) => state.lookingAt = null,
+        ),
+
+        // Look away from another actor
+        new Action(
+            [
+                "looks away from {{target}}",
+                "focuses {{their}} gaze elsewhere",
+            ],
+            ({state, target}) => state.eyes == "open" && state.lookingAt == target,
             ({state}) => state.lookingAt = null,
         ),
     ], {
