@@ -725,7 +725,7 @@ async function replyToQuestion(scene, actor, target) {
         'actor': allCharacters[actor],
     };
     return evaluateAction(action, properties, function() {
-        let baseText = '"' + this.text + '", ' + this.actor.firstName + ' replies.';
+        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' replies.';
         baseText = baseText
             .replace("{{emotion}}", this.actor.emotion)
         ;
@@ -763,8 +763,8 @@ async function askQuestion(scene, selections = {}) {
                 "Aren't you a bit young to be a {{job}}",
             ],
             async ({actor, target}) => {
-                return await allCharacters[actor].knowsAnyFactAbout('profession', target) &&
-                    await allCharacters[actor].knowsAnyFactAbout('age', target);
+                return (await allCharacters[actor].knowsAnyFactAbout('profession', target)) &&
+                    (await allCharacters[actor].knowsAnyFactAbout('age', target));
             },
             ({actor, target}) => {
                 if (allCharacters[target].knows(actor)) {
@@ -799,6 +799,8 @@ async function performInnerDialogue(scene) {
             [
                 "I wonder why {{targetName}} is so {{targetEmotion}}",
                 "{{targetName}} seems {{targetEmotion}} today",
+                "{{targetName}} seems more {{targetEmotion}} than usual",
+                "{{targetName}} seems to be particular {{targetEmotion}}",
             ],
             async ({actor, target}) => target != null && await allCharacters[actor].knowsSpecificFactAbout('feels', target, allCharacters[target].emotion),
         ),
@@ -807,6 +809,9 @@ async function performInnerDialogue(scene) {
             [
                 "Oh no, not {{targetName}} again",
                 "{{targetName}} is the worst",
+                "I wish {{targetName}} would leave",
+                "{{targetName}} shouldn't be here",
+                "I don't like being around {{targetName}}",
             ],
             ({actor, target}) => target != null && allCharacters[actor].dislikes(target),
         ),
@@ -816,6 +821,9 @@ async function performInnerDialogue(scene) {
                 "{{targetName}} is great",
                 "I like {{targetName}}",
                 "I hope {{targetName}} likes me",
+                "I like spending time with {{targetName}}",
+                "I wonder if {{targetName}} and I are friends",
+                "I'm glad {{targetName}} is here",
             ],
             ({target}) => target != null && allCharacters[actor].likes(target),
         ),
@@ -955,6 +963,24 @@ async function performDialogue(scene) {
                 "I am looking forward to being {{targetAge}} like you",
             ],
             async ({actor, target}) => target != null && await allCharacters[actor].knowsAnyFactAbout('age', target) && allCharacters[actor].age < allCharacters[target].age,
+        ),
+
+        new Action(
+            [
+                "Sometimes I worry that this is as good as it gets",
+                "I worry about the future",
+                "It's hard to imagine a worse way to spend this day",
+            ],
+            ({actor}) => negativeEmotions.indexOf(allCharacters[actor].emotion) != -1,
+        ),
+
+        new Action(
+            [
+                "I can't imagine how this day could be better",
+                "What an excellent afternoon",
+                "I feel quite content",
+            ],
+            ({actor}) => positiveEmotions.indexOf(allCharacters[actor].emotion) != -1,
         ),
 
         new Action(
