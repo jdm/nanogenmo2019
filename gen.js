@@ -715,7 +715,7 @@ async function yesNoResponse(actor) {
         'actor': allCharacters[actor],
     };
     return evaluateAction(action, properties, function() {
-        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' responds.';
+        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' responds' + (bool() ? ' ' + this.actor.emotion + "ly" : "") + ".";
         return baseText;
     });
 }
