@@ -445,6 +445,13 @@ let positiveEmotions = [
     "warm",
     "pensive",
     "triumphant",
+    "contemplative",
+    "introspective",
+    "solemn",
+    "wistful",
+    "kind",
+    "tender",
+    "attentive",
 ];
 
 let negativeEmotions = [
@@ -462,6 +469,16 @@ let negativeEmotions = [
     "angry",
     "fearful",
     "tense",
+    "jealous",
+    "dejected",
+    "disappointed",
+    "heavy-hearted",
+    "despondent",
+    "dour",
+    "woeful",
+    "anxious",
+    "hysterical",
+    "frightened",
 ];
 
 function describeCharacter(char) {
