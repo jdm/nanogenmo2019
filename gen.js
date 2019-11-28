@@ -439,6 +439,12 @@ let positiveEmotions = [
     "excited",
     "delighted",
     "rapturous",
+    "content",
+    "thoughtful",
+    "relaxed",
+    "warm",
+    "pensive",
+    "triumphant",
 ];
 
 let negativeEmotions = [
@@ -451,6 +457,11 @@ let negativeEmotions = [
     "upset",
     "lonely",
     "nervous",
+    "suspicious",
+    "glum",
+    "angry",
+    "fearful",
+    "tense",
 ];
 
 function describeCharacter(char) {
@@ -825,7 +836,7 @@ async function performInnerDialogue(scene) {
                 "I wonder why {{targetName}} is so {{targetEmotion}}",
                 "{{targetName}} seems {{targetEmotion}} today",
                 "{{targetName}} seems more {{targetEmotion}} than usual",
-                "{{targetName}} seems to be particular {{targetEmotion}}",
+                "{{targetName}} seems to be particularly {{targetEmotion}}",
             ],
             async ({actor, target}) => target != null && await allCharacters[actor].knowsSpecificFactAbout('feels', target, allCharacters[target].emotion),
         ),
@@ -1626,6 +1637,8 @@ async function modifySetting(scene) {
             [
                 "walks up",
                 "arrives",
+                "walks over",
+                "appears",
             ],
             ({setting, actor}) => !setting.isIndoors && !setting.isPresent(actor),
             ({setting, actor, scene}) => {
@@ -1634,13 +1647,30 @@ async function modifySetting(scene) {
             }
         ),
 
-        // An actor exits an outdoor environment.
+        // An actor enters an environment.
+        new Action(
+            [
+                "joins the group",
+                "notices the others and joins them",
+            ],
+            ({setting, actor}) => !setting.isPresent(actor) && setting.characters.length > 0,
+            ({setting, actor, scene}) => {
+                setting.addCharacter(actor);
+                scene.pending.push(greetEntry.bind(null, scene, actor));
+            }
+        ),
+
+        // An actor exits an environment.
         new Action(
             [
                 "walks away",
                 "leaves",
+                "wanders away",
+                "strides away",
+                "leaves {{environment}} quickly",
+                "leaves in a hurry",
             ],
-            ({setting, actor, scene}) => !setting.isIndoors && setting.isPresent(actor) && actor != scene.povCharacter,
+            ({setting, actor, scene}) => setting.isPresent(actor) && actor != scene.povCharacter,
             ({setting, actor}) => setting.removeCharacter(actor),
         ),
 
@@ -1649,7 +1679,8 @@ async function modifySetting(scene) {
             [
                 "enters",
                 "enters {{environment}}",
-                "walks through the door",
+                "walks through the doorway",
+                "wanders into {{environment}}",
             ],
             ({setting, actor}) => setting.isIndoors && !setting.isPresent(actor),
             ({setting, actor, scene}) => {
@@ -1662,8 +1693,8 @@ async function modifySetting(scene) {
         new Action(
             [
                 "walks out the door",
-                "leaves",
-                "leaves {{environment}}",
+                "leaves {{environment}} by the closest door",
+                "takes {{their}} leave and walks away",
             ],
             ({setting, actor}) => setting.isIndoors && setting.isPresent(actor) && actor != scene.povCharacter,
             ({setting, actor}) => setting.removeCharacter(actor),
@@ -1683,6 +1714,7 @@ async function modifySetting(scene) {
         let baseText = this.actor.firstName + " " +
             this.text
             .replace("{{environment}}", "the " + this.setting.environment)
+            .replace("{{their}}", this.actor.pronouns.possessive)
             + ".";
         return baseText;
     });
