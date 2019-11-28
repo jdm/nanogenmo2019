@@ -798,7 +798,7 @@ async function askQuestion(scene, selections = {}) {
                 } else {
                     allCharacters[target].relationships[other] = { value: 0.5 };
                     scene.pending.push(exactAction.bind(null, "\"Nice to meet you " + allCharacters[other].firstName +",\" " + allCharacters[target].firstName + " says.", () => {}));
-                    scene.pending.push(introduceSelf.bind(null, scene, target));
+                    scene.pending.push(introduceSelf.bind(null, scene, target, false));
                 }
             }
         ),
@@ -1499,7 +1499,7 @@ async function introduceSelf2(scene, actor) {
     });
 }
 
-async function introduceSelf(scene, actor) {
+async function introduceSelf(scene, actor, isReply) {
     const actions = new Actions([
         new Action(
             [
@@ -1529,9 +1529,13 @@ async function introduceSelf(scene, actor) {
     let action = await chooseAction(actions);
     let properties = {
         actor: allCharacters[actor],
+        isReply: isReply,
     };
     return evaluateAction(action, properties, function() {
-        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' replies.';
+        let baseText = this.isReply ?
+            '"' + this.text + '," ' + this.actor.firstName + ' replies.' :
+            '"' + this.text + '."'
+        ;
         return baseText
             .replace("{{name}}", this.actor.firstName)
         ;
@@ -1601,7 +1605,7 @@ async function greetEntry(scene, newActor) {
         new Action(
             "Who are you",
             ({actor, entered}) => !allCharacters[actor].knows(entered),
-            ({scene, entered}) => scene.pending.push(introduceSelf.bind(null, scene, entered)),
+            ({scene, entered}) => scene.pending.push(introduceSelf.bind(null, scene, entered, true)),
         ),
     ], {
         actor: actor,
