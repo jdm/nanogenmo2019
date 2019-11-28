@@ -1714,7 +1714,11 @@ Scene.prototype.generateAction = async function() {
     ];
 
     while (true) {
-        const pendingChoice = chooseAndRemove(this.pending);
+        let pendingChoice = null;
+        if (this.pending.length) {
+            pendingChoice = this.pending[0];
+            this.pending.splice(0, 1);
+        }
         const element = pendingChoice ? pendingChoice : choose(possibleElements);
         let result = await element(this);
         // Ignore selections that turn out to be invalid.
