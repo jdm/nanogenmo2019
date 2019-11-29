@@ -452,6 +452,7 @@ let positiveEmotions = [
     "kind",
     "tender",
     "attentive",
+    "confident",
 ];
 
 let negativeEmotions = [
@@ -1045,6 +1046,8 @@ async function performDialogue(scene) {
                 "What a striking {{object}}",
                 "That is quite a {{object}}",
                 "Ooh, a {{object}}",
+                "That is a fine looking {{object}}",
+                "What a nice {{object}}",
             ],
             async ({object, actor}) => object != null && await allCharacters[actor].likesObject(object),
         ),
@@ -1054,6 +1057,9 @@ async function performDialogue(scene) {
                 "I do not like that {{object}}",
                 "What a horrible {{object}}",
                 "Ew, a {{object}}",
+                "Get that {{object}} out of here",
+                "That is a poor quality {{object}}",
+                "I'm offended by that {{object}}",
             ],
             async ({object, actor}) => object != null && !await allCharacters[actor].likesObject(object),
         ),
@@ -1425,7 +1431,11 @@ async function performAction(scene) {
 
         // Put down object in scene.
         new Action(
-            "replaces {{holding}}",
+            [
+                "replaces {{holding}}",
+                "puts down {{holding}}",
+                "places {{holding}} back where it came from",
+            ],
             ({state}) => state.holding != null,
             ({setting, state}) => {
                 setting.objects.push(state.holding);
@@ -1435,13 +1445,21 @@ async function performAction(scene) {
 
         // Touch an object in scene.
         new Action(
-            "runs {{their}} hand along {{object}} {{emotion}}",
-            ({state}) => state.eyes == "open" && object,
+            [
+                "runs {{their}} hand along {{object}} {{emotion}}",
+                "caresses {{object}} {{emotion}}",
+                "slowly trails a finger along the length of {{object}}",
+            ],
+            ({state, object}) => state.eyes == "open" && object,
         ),
 
         // Do not quite touch object in scene.
         new Action(
-            "reaches towards {{object}}, but stops {{emotion}} before touching it",
+            [
+                "reaches towards {{object}}, but stops {{emotion}} before touching it",
+                "starts to reach for {{object}} before thinking better of it",
+                "holds out a hand {{emotion}} to {{object}} but stops short",
+            ],
             ({state, object}) => state.eyes == "open" && object && !state.holding,
         ),
 
@@ -1465,12 +1483,13 @@ async function performAction(scene) {
 
         // Look at object and then away.
         new Action(
-            "looks at {{object}} then quickly looks away",
+            [
+                "looks at {{object}} then quickly looks away",
+                "briefly glances at {{object}} before looking awaiy",
+            ],
             ({state, object}) => state.eyes == "open" && state.lookingAt != object && object,
             ({state}) => state.lookingAt = null,
         ),
-
-        new Action("shuffles {{their}} feet"),
 
         // Stop looking at current target.
         new Action(
@@ -1493,8 +1512,20 @@ async function performAction(scene) {
             ({state}) => state.eyes = "open",
         ),
 
-        new Action("hums"),
-        new Action("sways {{emotion}}"),
+        new Action(
+            [
+                "hums",
+                "frowns",
+                "grimaces",
+                "smirks",
+                "coughs quietly",
+                "frowns pensively",
+                "shifts",
+                "adjusts {{their}} stance",
+                "shuffles {{their}} feet",
+                "sways {{emotion}}",
+            ],
+        ),
     ], {
         'state': state,
         'object': object,
