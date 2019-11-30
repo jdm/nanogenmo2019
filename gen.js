@@ -1490,7 +1490,7 @@ async function performAction(scene) {
         new Action(
             [
                 "looks at {{object}} then quickly looks away",
-                "briefly glances at {{object}} before looking awaiy",
+                "briefly glances at {{object}} before looking away",
             ],
             ({state, object}) => state.eyes == "open" && state.lookingAt != object && object,
             ({state}) => state.lookingAt = null,
@@ -1946,6 +1946,7 @@ Scene.prototype.describeObjects = async function() {
         new Action(
             [
                 "There is a {{object}} nearby.",
+                "Nearby is a {{object}}.",
                 "A {{object}} sits nearby.",
                 "A {{object}} lays nearby.",
                 "A {{object}} rests opposite.",
@@ -1955,6 +1956,7 @@ Scene.prototype.describeObjects = async function() {
 
         new Action(
             [
+                "Nearby is {{objects}}.",
                 "Nearby, there is {{objects}}.",
                 "There is {{objects}} in the vicinity.",
                 "There is {{objects}} nearby.",
