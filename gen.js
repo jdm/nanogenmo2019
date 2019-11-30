@@ -603,7 +603,7 @@ function createSetting() {
     const environment = isIndoors ? choose(indoorEnvironments) : choose(outdoorEnvironments);
     const objectSource = isIndoors ? indoorObject : outdoorObject;
 
-    let numObjects = whole_number(0, objectSource.length);
+    let numObjects = whole_number(1, objectSource.length);
     let objects = [];
     for (var i = 0; i < numObjects; i++) {
         objects.push(choose(objectSource));
@@ -1941,11 +1941,49 @@ Scene.prototype.generateTransition = async function(previousScene, timePassed) {
     });
 }
 
+Scene.prototype.describeObjects = async function() {
+    const actions = new Actions([
+        new Action(
+            [
+                "There is a {{object}} nearby.",
+                "A {{object}} sits nearby.",
+                "A {{object}} lays nearby.",
+            ],
+            ({objects}) => objects.length == 1,
+        ),
+
+        new Action(
+            [
+                "Nearby, there are {{objects}}.",
+                "There are {{objects}} in the vicinity.",
+                "There are {{objects}} nearby.",
+            ],
+            ({objects}) => objects.length > 1,
+        ),
+    ], {
+        objects: this.setting.objects,
+    });
+
+    let action = await chooseAction(actions);
+    let properties = {
+        objects: this.setting.objects,
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = this.text
+            .replace("{{object}}", this.objects[0]);
+        let o = this.objects.map((o) => "a " + o);
+        if (this.objects.length > 2) {
+            let s = o.slice(0, o.length - 1).join(", ") + ", and " + o[o.length - 1];
+            baseText = baseText.replace("{{objects}}", s);
+        } else if (this.objects.length == 2) {
+            baseText = baseText.replace("{{objects}}", o.join(" and "));
+        }
+        return baseText;
+    });
+}
+
 Scene.prototype.describeSetting = async function() {
     let actor = this.povCharacter;
-
-    let sentences = [];
-    sentences.forEach((s) => this.pending.push(exactAction.bind(s)));
 
     const actions = new Actions([
         new Action(
@@ -1977,6 +2015,8 @@ Scene.prototype.describeSetting = async function() {
     ], {
         setting: this.setting,
     });
+
+    this.pending.push(this.describeObjects.bind(this));
 
     let action = await chooseAction(actions);
     let properties = {
