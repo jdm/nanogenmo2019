@@ -168,6 +168,10 @@ const profession = [
     "news anchor",
 ];
 
+function upperCaseWord(s) {
+    return s[0].toUpperCase() + s.slice(1);
+}
+
 const gender = [
     "male",
     "female",
@@ -905,6 +909,7 @@ async function askQuestion(scene, selections = {}) {
     };
     return evaluateAction(action, properties, function() {
         let baseText = '"' + this.text + '?" ' + this.actor.firstName + ' asks ' + this.target.firstName + '.';
+        baseText = baseText.replace("{{job}}", this.target.profession);
         if (this.other) {
             baseText = baseText.replace('{{thirdParty}}', this.other.firstName);
         }
@@ -1754,7 +1759,7 @@ async function modifySetting(scene) {
     const actor = choose(allCharacters.map(c => c.id));
 
     const actions = new Actions([
-        // An actor enters an outdoor environment.
+        // An actor enters an environment.
         new Action(
             [
                 "walks up",
@@ -1762,20 +1767,20 @@ async function modifySetting(scene) {
                 "walks over",
                 "appears",
             ],
-            ({setting, actor}) => !setting.isIndoors && !setting.isPresent(actor),
+            ({setting, actor}) => !setting.isPresent(actor),
             ({setting, actor, scene}) => {
                 setting.addCharacter(actor);
                 scene.pending.push(greetEntry.bind(null, scene, actor));
             }
         ),
 
-        // An actor enters an environment.
+        // An actor enters an environment with other characters present.
         new Action(
             [
                 "joins the group",
                 "notices the others and joins them",
             ],
-            ({setting, actor}) => !setting.isPresent(actor) && setting.characters.length > 0,
+            ({setting, actor}) => !setting.isPresent(actor) && setting.characters.length > 1,
             ({setting, actor, scene}) => {
                 setting.addCharacter(actor);
                 scene.pending.push(greetEntry.bind(null, scene, actor));
@@ -1933,6 +1938,73 @@ Scene.prototype.generateTransition = async function(previousScene, timePassed) {
     });
 }
 
+Scene.prototype.describeSetting = async function() {
+    let actor = this.povCharacter;
+
+    let sentences = [];
+    sentences.forEach((s) => this.pending.push(exactAction.bind(s)));
+
+    const actions = new Actions([
+        new Action(
+            [
+                "{{they}} {{are}} alone.",
+                "Nobody else is present.",
+                "No one else is with {{them}}.",
+            ],
+            ({setting}) => setting.characters.length == 1,
+        ),
+
+        new Action(
+            [
+                "{{other}} is keeping {{them}} company.",
+                "{{other}} is present as well.",
+                "{{they}} {{are}} joined by {{other}}.",
+            ],
+            ({setting}) => setting.characters.length == 2,
+        ),
+
+        new Action(
+            [
+                "{{others}} are also present.",
+                "{{others}} are with {{them}}.",
+                "{{others}} are there as well.",
+            ],
+            ({setting}) => setting.characters.length > 2,
+        ),
+    ], {
+        setting: this.setting,
+    });
+
+    let action = await chooseAction(actions);
+    let properties = {
+        actor: allCharacters[actor],
+        others: this.setting.characters.filter((a) => a != actor).map((a) => allCharacters[a]),
+    };
+    return evaluateAction(action, properties, function() {
+        let baseText = this.text
+            .replace("{{they}}", upperCaseWord(this.actor.pronouns.direct))
+            .replace("{{them}}", this.actor.pronouns.indirect)
+            .replace("{{are}}", conjugate(this.actor, "is"))
+        ;
+        if (this.others.length) {
+            baseText = baseText
+                .replace("{{other}}", this.others[0].firstName);
+
+            if (this.others.length > 1) {
+                let names = this.others.map((c) => c.firstName);
+                let s;
+                if (names.length > 2) {
+                    s = names.slice(0, names.length - 1).join(', ') + ", and " + names[names.length - 1];
+                } else {
+                    s = names.join(' and ');
+                }
+                baseText = baseText.replace("{{others}}", s);
+            }
+        }
+        return baseText;
+    });
+}
+
 Scene.prototype.generateIntro = async function() {
     let actor = this.povCharacter;
 
@@ -1943,6 +2015,8 @@ Scene.prototype.generateIntro = async function() {
 
         new Action("{{actor}} is standing {{emotion}} in the {{environment}}."),
     ], {});
+
+    this.pending.push(this.describeSetting.bind(this));
 
     let properties = {
         actor: allCharacters[actor],
