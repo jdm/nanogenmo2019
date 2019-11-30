@@ -2171,8 +2171,64 @@ async function create(scenes) {
     console.log("THE IMPORTANCE OF EARNESTLY BEING")
     console.log()
 
+    let outerDialogue = /"[^"]*"/;
+    let innerDialogue = /^'[^']*'/;
+
     for (const scene of plot) {
-        console.log(paragraph(scene.actions));
+
+        let actionGroups = [];
+        let currentGroup = [];
+        let currentSubject;
+
+        for (const action of scene.actions) {
+            let possibleSubjects = [];
+
+            // Ignore any character names that appear inside dialogue.
+            let minimalActionText = action.replace(outerDialogue, "").replace(innerDialogue, "");
+            for (const c of allCharacters) {
+                let subjectIndex = minimalActionText.indexOf(c.firstName);
+                if (subjectIndex != -1) {
+                    possibleSubjects.push([c.id, subjectIndex]);
+                }
+            }
+
+            // No character name was found; assume it belongs with any previous actions for
+            // last known subject.
+            if (possibleSubjects.length == 0) {
+                currentGroup.push(action);
+                continue;
+            }
+
+            let subject = possibleSubjects.sort((x, y) => x[1] < y[1] ? -1 : 1)[0][0];
+
+            if (currentSubject == null) {
+                currentSubject = subject;
+            }
+
+            // If it's not dialogue, we want to include it in the current paragraph.
+            if (!action.match(outerDialogue) && !action.match(innerDialogue)) {
+                currentGroup.push(action);
+                //currentSubject = subject;
+                continue;
+            }
+
+            // If there is dialogue, we want to start a new group if a different subject
+            // is speaking.
+            if (subject != currentSubject) {
+                actionGroups.push(currentGroup);
+                currentGroup = [];
+                currentSubject = subject;
+            }
+            currentGroup.push(action);
+        }
+        actionGroups.push(currentGroup);
+
+        actionGroups.forEach((actions) => {
+            console.log(paragraph(actions));
+            console.log();
+        })
+
+        console.log("***")
         console.log();
     }
 
