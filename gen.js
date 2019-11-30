@@ -1157,7 +1157,7 @@ async function performDialogue(scene) {
 
         new Action(
             "I want to hold your hand",
-            ({actor, target}) => target != null && allCharacters[actor].knows(target),
+            ({actor, target}) => target != null && allCharacters[actor].likes(target),
             ({scene, actor, target}) => {
                 scene.pending.push(respondToOffer.bind(
                     null, scene, target, actor,
