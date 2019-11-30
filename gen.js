@@ -1908,7 +1908,7 @@ Scene.prototype.generateAction = async function() {
     }
 }
 
-Scene.prototype.generateTransition = async function(previousScene, timePassed) {
+Scene.prototype.generateTransition = async function(timePassed) {
     const actions = new Actions([
         new Action("{{duration}} pass in the blink of an eye."),
 
@@ -1948,15 +1948,17 @@ Scene.prototype.describeObjects = async function() {
                 "There is a {{object}} nearby.",
                 "A {{object}} sits nearby.",
                 "A {{object}} lays nearby.",
+                "A {{object}} rests opposite.",
             ],
             ({objects}) => objects.length == 1,
         ),
 
         new Action(
             [
-                "Nearby, there are {{objects}}.",
-                "There are {{objects}} in the vicinity.",
-                "There are {{objects}} nearby.",
+                "Nearby, there is {{objects}}.",
+                "There is {{objects}} in the vicinity.",
+                "There is {{objects}} nearby.",
+                "Opposite, there is {{objects}}.",
             ],
             ({objects}) => objects.length > 1,
         ),
@@ -2052,11 +2054,14 @@ Scene.prototype.generateIntro = async function() {
     let actor = this.povCharacter;
 
     const actions = new Actions([
-        new Action("{{actor}} finds {{themself}} in the {{environment}}."),
-
-        new Action("{{actor}} is standing in the {{environment}}."),
-
-        new Action("{{actor}} is standing {{emotion}} in the {{environment}}."),
+        new Action(
+            [
+                "{{actor}} finds {{themself}} in the {{environment}}.",
+                "{{actor}} stands in the {{environment}}.",
+                "{{actor}} stands {{emotion}} in the {{environment}}.",
+                "{{actor}} sits {{emotion}} in the {{environment}}.",
+            ],
+        ),
     ], {});
 
     this.pending.push(this.describeSetting.bind(this));
@@ -2093,7 +2098,7 @@ async function createScene(setting, povCharacter) {
 
 /////////////////
 
-async function create() {
+async function create(scenes) {
     let family = createFamily();
 
     // Create some non-family characters.
@@ -2106,14 +2111,29 @@ async function create() {
       }*/
 
     let plot = [];
+    let lastSetting = null;
+    while (scenes-- > 0) {
+        if (bool()) {
+            character(middleAge());
+        }
 
-    let introScene = await createScene(createSetting());
-    plot.push(introScene);
+        let setting;
+        if (lastSetting && bool()) {
+            setting = lastSetting;
+            setting.resetCharacters();
+        } else {
+            setting = createSetting();
+        }
+        let scene = await createScene(setting);
+        if (lastSetting && bool()) {
+            scene.actions.splice(0, 0, (await scene.generateTransition({ hours: whole_number(2, 10) })).toText());
+        }
+        plot.push(scene);
+        lastSetting = setting;
+    }
 
-    let stranger = character(middleAge());
-    let strangerScene = await createScene(createSetting())
-    strangerScene.actions.splice(0, 0, (await strangerScene.generateTransition(introScene, { hours: whole_number(2, 6) })).toText());
-    plot.push(strangerScene);
+    console.log("THE IMPORTANCE OF EARNESTLY BEING")
+    console.log()
 
     for (const scene of plot) {
         console.log(paragraph(scene.actions));
@@ -2123,4 +2143,4 @@ async function create() {
     console.log("The end.")
 }
 
-create();
+create(process.argv.length > 2 ? parseInt(process.argv[2], 10) : 3);
