@@ -1521,6 +1521,8 @@ async function performAction(scene) {
             [
                 "hums",
                 "frowns",
+                "smiles",
+                "grins",
                 "grimaces",
                 "smirks",
                 "coughs quietly",
@@ -1631,6 +1633,7 @@ async function introduceSelf(scene, actor, isReply) {
                 "I am {{name}}",
                 "{{name}}",
                 "You can call me {{name}}",
+                "Call me {{name}}",
             ],
             () => true,
             ({scene, actor}) => {
