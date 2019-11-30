@@ -453,7 +453,6 @@ let positiveEmotions = [
     "introspective",
     "solemn",
     "wistful",
-    "kind",
     "tender",
     "attentive",
     "confident",
@@ -606,7 +605,12 @@ function createSetting() {
     let numObjects = whole_number(1, objectSource.length);
     let objects = [];
     for (var i = 0; i < numObjects; i++) {
-        objects.push(choose(objectSource));
+        let o = choose(objectSource);
+        if (objects.indexOf(o) != -1) {
+            i--;
+            continue;
+        }
+        objects.push(o);
     }
 
     let setting = new Setting(environment, objects, isIndoors);
@@ -774,6 +778,10 @@ async function replyToQuestion(scene, actor, target) {
                 "I'm feeling {{emotion}}",
                 "I feel {{emotion}}",
                 "I'm {{emotion}}; thanks for asking",
+                "Today's been a real {{emotion}} day",
+                "Right now? I'm pretty {{emotion}}",
+                "I can't shake this {{emotion}} feeling",
+                "I guess I'd have to say I'm {{emotion}},"
             ],
             ({actor, target}) => allCharacters[actor].likes(target),
             ({scene, actor}) => scene.recordFact('feels', actor, allCharacters[actor].emotion),
@@ -784,6 +792,12 @@ async function replyToQuestion(scene, actor, target) {
                 "You don't actually care",
                 "You're just pretending to care",
                 "Don't ask me that if you don't care",
+                "Don't talk to me",
+                "I don't want to answer that",
+                "I'm not going to answer that",
+                "You don't get to ask me that",
+                "Stop pretending to care about me",
+                "Stop. Just stop",
             ],
             ({actor, target}) => allCharacters[actor].dislikes(target),
         ),
@@ -793,6 +807,13 @@ async function replyToQuestion(scene, actor, target) {
                 "We don't know each other",
                 "I'd prefer not to answer that",
                 "That's a very personal question",
+                "I would rather not answer that",
+                "I don't do small talk",
+                "Dunno",
+                "I don't know",
+                "Hard to say",
+                "Eh",
+                "Whatever",
             ],
             ({actor, target}) => !allCharacters[actor].knows(target),
         ),
@@ -1628,12 +1649,16 @@ async function introduceSelf(scene, actor, isReply) {
     const actions = new Actions([
         new Action(
             [
-                "My name is {{name}}",
+                "My name is {{fullName}}",
                 "I'm {{name}}",
+                "I'm {{fullName}}",
                 "I am {{name}}",
                 "{{name}}",
+                "{{fullName}}",
                 "You can call me {{name}}",
+                "{{fullName}}, but you can call me {{name}}",
                 "Call me {{name}}",
+                "{{lastName}}. {{fullName}}",
             ],
             () => true,
             ({scene, actor}) => {
@@ -1664,6 +1689,8 @@ async function introduceSelf(scene, actor, isReply) {
         ;
         return baseText
             .replace("{{name}}", this.actor.firstName)
+            .replace("{{lastName}}", this.actor.lastName)
+            .replace("{{fullName}}", this.actor.firstName + ' ' + this.actor.lastName)
         ;
     });
 }
@@ -1808,9 +1835,11 @@ async function modifySetting(scene) {
         new Action(
             [
                 "enters",
+                "enters the room",
                 "enters {{environment}}",
                 "walks through the doorway",
                 "wanders into {{environment}}",
+                "saunters into the room",
             ],
             ({setting, actor}) => setting.isIndoors && !setting.isPresent(actor),
             ({setting, actor, scene}) => {
@@ -1825,6 +1854,9 @@ async function modifySetting(scene) {
                 "walks out the door",
                 "leaves {{environment}} by the closest door",
                 "takes {{their}} leave and walks away",
+                "quietly departs",
+                "wanders away from {{environment}}",
+                "wanders off",
             ],
             ({setting, actor}) => setting.isIndoors && setting.isPresent(actor) && actor != scene.povCharacter,
             ({setting, actor}) => setting.removeCharacter(actor),
@@ -1947,6 +1979,7 @@ Scene.prototype.describeObjects = async function() {
             [
                 "There is a {{object}} nearby.",
                 "Nearby is a {{object}}.",
+                "Just out of reach is a {{object}}.",
                 "A {{object}} sits nearby.",
                 "A {{object}} lays nearby.",
                 "A {{object}} rests opposite.",
@@ -1958,6 +1991,7 @@ Scene.prototype.describeObjects = async function() {
             [
                 "Nearby is {{objects}}.",
                 "Nearby, there is {{objects}}.",
+                "Just out of reach is {{objects}}.",
                 "There is {{objects}} in the vicinity.",
                 "There is {{objects}} nearby.",
                 "Opposite, there is {{objects}}.",
