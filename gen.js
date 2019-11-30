@@ -1978,7 +1978,6 @@ async function createScene(setting, povCharacter) {
 
 async function create() {
     let family = createFamily();
-    let homeSetting = createSetting();
 
     // Create some non-family characters.
     for (var i = 0; i < whole_number(1, 3); i++) {
@@ -1991,14 +1990,11 @@ async function create() {
 
     let plot = [];
 
-    // introduce characters and setting
-    let introScene = await createScene(homeSetting);
+    let introScene = await createScene(createSetting());
     plot.push(introScene);
 
-    // introduce stranger
-    homeSetting.resetCharacters();
     let stranger = character(middleAge());
-    let strangerScene = await createScene(homeSetting)
+    let strangerScene = await createScene(createSetting())
     strangerScene.actions.splice(0, 0, (await strangerScene.generateTransition(introScene, { hours: whole_number(2, 6) })).toText());
     plot.push(strangerScene);
 
