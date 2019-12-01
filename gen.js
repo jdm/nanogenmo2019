@@ -16,27 +16,37 @@ var pl = require( "./pl/core.js" );
 const firstNameStart = [
     "Ar",
     "At",
+    "Ban",
     "Ben",
+    "Ca",
+    "Cal",
     "Dar",
     "Don",
     "Ed",
+    "Erl",
     "Fa",
     "Fo",
+    "Fi",
     "Ja",
     "Jaa",
     "Jo",
     "Ju",
     "Ma",
     "Mar",
+    "Me",
+    "Mo",
     "Na",
     "Nu",
+    "Pi",
     "Po",
     "Ro",
     "Ra",
+    "Ren",
     "Sa",
     "Sen",
     "Son",
     "To",
+    "Ter",
     "Va",
     "Vo",
 ];
@@ -2367,6 +2377,7 @@ async function create(scenes) {
         }
         title += choose(chapterTitles);
         console.log(title);
+        console.log('---')
         console.log();
 
         let actionGroups = [];
