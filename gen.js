@@ -2259,6 +2259,7 @@ const chapterModifiers = [
     "New",
     "Old",
     "Wonderful",
+    "Wondrous",
     "Tragic",
     "Monstrous",
     "Logical",
@@ -2266,6 +2267,7 @@ const chapterModifiers = [
     "Uncertain",
     "Unknown",
     "Only",
+    "Solitary",
     "Real",
     "Pretend",
     "Rational",
@@ -2340,7 +2342,7 @@ async function create(scenes) {
     console.log()
 
     let outerDialogue = /"[^"]*"/;
-    let innerDialogue = /^'[^']*'/;
+    let innerDialogue = /^'(.*)'/;
 
     let chapter = 1;
 
