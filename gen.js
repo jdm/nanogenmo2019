@@ -82,7 +82,7 @@ const nameSeparators = [
     "",
     "",
     "",
-    "'",
+    //"'",
     "-",
 ];
 
@@ -466,7 +466,7 @@ let negativeEmotions = [
     "tired",
     "frustrated",
     "upset",
-    "lonely",
+    //"lonely",
     "nervous",
     "suspicious",
     "glum",
@@ -724,9 +724,21 @@ async function yesNoResponse(actor) {
         'actor': allCharacters[actor],
     };
     return evaluateAction(action, properties, function() {
-        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' responds' + (bool() ? ' ' + this.actor.emotion + "ly" : "") + ".";
+        let baseText = '"' + this.text + '," ' + this.actor.firstName + ' responds' + (bool() ? ' ' + adverb(this.actor.emotion) : "") + ".";
         return baseText;
     });
+}
+
+function adverb(emotion) {
+    let exceptions = {
+        "happy": "happily",
+        "content": "contentedly",
+        "angry": "angrily",
+    };
+    if (emotion in exceptions) {
+        return exceptions[emotion];
+    }
+    return emotion + "ly";
 }
 
 async function respondToOffer(scene, actor, offeree, accept, decline) {
@@ -1579,7 +1591,7 @@ async function performAction(scene) {
             this.text
             .replace("{{their}}", this.actor.pronouns.possessive)
             .replace("{{object}}", "the " + this.object)
-            .replace("{{emotion}}", this.actor.emotion + "ly")
+            .replace("{{emotion}}", adverb(this.actor.emotion))
             .replace("{{holding}}", "the " + this.holding)
             + ".";
         if (this.target != null) {
@@ -2112,7 +2124,7 @@ Scene.prototype.generateIntro = async function() {
             .replace("{{actor}}", this.actor.firstName)
             .replace("{{themself}}", this.actor.pronouns.reflexive)
             .replace("{{environment}}", this.environment)
-            .replace("{{emotion}}", this.actor.emotion + "ly")
+            .replace("{{emotion}}", adverb(this.actor.emotion))
         ;
         return baseText;
     });
@@ -2125,7 +2137,7 @@ async function createScene(setting, povCharacter) {
     }
     let result = await scene.generateIntro();
     scene.actions.push(result.toText());
-    const numElements = whole_number(30, 50);
+    const numElements = whole_number(60, 100);
     while (scene.actions.length < numElements || scene.pending.length) {
         await scene.generateAction();
     }
@@ -2161,7 +2173,7 @@ async function create(scenes) {
             setting = createSetting();
         }
         let scene = await createScene(setting);
-        if (lastSetting && bool()) {
+        if (lastSetting /*== setting*/ && bool()) {
             scene.actions.splice(0, 0, (await scene.generateTransition({ hours: whole_number(2, 10) })).toText());
         }
         plot.push(scene);
@@ -2184,7 +2196,10 @@ async function create(scenes) {
             let possibleSubjects = [];
 
             // Ignore any character names that appear inside dialogue.
-            let minimalActionText = action.replace(outerDialogue, "").replace(innerDialogue, "");
+            let minimalActionText = action
+                .replace(outerDialogue, "")
+                .replace(innerDialogue, "")
+            ;
             for (const c of allCharacters) {
                 let subjectIndex = minimalActionText.indexOf(c.firstName);
                 if (subjectIndex != -1) {
