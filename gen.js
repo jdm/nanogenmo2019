@@ -1399,7 +1399,7 @@ async function reactToGift(scene, actor) {
                 "I don't want this {{object}}",
                 "I don't like this {{object}}",
             ],
-            async ({actor, state}) => await !allCharacters[actor].likesObject(state.holding),
+            async ({actor, state}) => !await allCharacters[actor].likesObject(state.holding),
         ),
     ], {
         'actor': actor,
