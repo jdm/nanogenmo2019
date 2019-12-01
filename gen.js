@@ -2246,6 +2246,8 @@ const chapterPrefixes = [
     "A",
     "The",
     "One",
+    "Some",
+    "Any",
 ];
 
 const chapterModifiers = [
