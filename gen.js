@@ -919,7 +919,8 @@ async function askQuestion(scene, selections = {}) {
                 "Have you ever been in love",
                 "Do you believe in soulmates",
                 "Is there an afterlife",
-                "Is the universe infinite",
+                "Is the universe actually infinite",
+                "Do you believe in an omnipotent, benevolent deity",
                 "Do you think people are inherently good",
                 "Is there such a thing as universal morality",
                 "Have you ever read something that fundamentally changed your worldview",
@@ -1800,7 +1801,8 @@ async function greetEntry(scene, newActor) {
                 "Hello everyone",
                 "Hi all",
                 "Hi folks",
-                "Oh, hi everyone"
+                "Oh, hi everyone",
+                "Hey everyone",
             ],
             ({otherCharacters}) => otherCharacters.length > 1,
         ),
@@ -1808,6 +1810,8 @@ async function greetEntry(scene, newActor) {
         new Action([
             "Hi there",
             "Hello",
+            "Oh, hi",
+            "Hey",
         ]),
 
         new Action(
@@ -1815,6 +1819,7 @@ async function greetEntry(scene, newActor) {
                 "Nice to see everyone",
                 "This is a pleasant surprise",
                 "How nice to see you all",
+                "We meet again",
             ],
             ({actor, otherCharacters}) => otherCharacters.map((a) => allCharacters[actor].likes(a)).reduce((a, b) => a && b),
         ),
@@ -1824,12 +1829,17 @@ async function greetEntry(scene, newActor) {
                 "Well, this is awkward",
                 "What an unpleasant surprise",
                 "What a pity we meet again",
+                "I had hoped we would not meet again",
+                "I didn't realize you would be here",
             ],
             ({actor, otherCharacters}) => otherCharacters.map((a) => allCharacters[actor].dislikes(a)).reduce((a, b) => a && b),
         ),
 
         new Action(
-            "I don't believe we've met",
+            [
+                "I don't believe we've met",
+                "I don't think we've met before",
+            ],
             ({actor, otherCharacters}) => otherCharacters.map((a) => !allCharacters[actor].knows(a)).reduce((a, b) => a && b),
         ),
     ], {
