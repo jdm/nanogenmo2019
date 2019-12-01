@@ -749,6 +749,7 @@ async function respondToOffer(scene, actor, offeree, accept, decline) {
                 "Sure",
                 "Yes",
                 "Alright",
+                "Yep",
             ],
             // If there's a relationship, positive response is proportional to how likable.
             ({actor, target}) => !allCharacters[actor].knows(target) || floating_point_number(0.0, 1.0) < allCharacters[actor].relationships[target].value,
@@ -793,7 +794,9 @@ async function replyToQuestion(scene, actor, target) {
                 "Today's been a real {{emotion}} day",
                 "Right now? I'm pretty {{emotion}}",
                 "I can't shake this {{emotion}} feeling",
-                "I guess I'd have to say I'm {{emotion}},"
+                "I guess I'd have to say I'm {{emotion}}",
+                "You could say I'm {{emotion}}",
+                "Mostly {{emotion}}, I guess",
             ],
             ({actor, target}) => allCharacters[actor].likes(target),
             ({scene, actor}) => scene.recordFact('feels', actor, allCharacters[actor].emotion),
@@ -869,6 +872,9 @@ async function askQuestion(scene, selections = {}) {
                 "How are you doing",
                 "How is it going",
                 "How are things",
+                "How're you",
+                "How're you doing",
+                "How's it going",
             ],
             () => true,
             ({scene, actor, target}) => scene.pending.push(replyToQuestion.bind(null, scene, target, actor)),
@@ -923,6 +929,12 @@ async function askQuestion(scene, selections = {}) {
                 "Do you have any regrets",
                 "Have you found meaning in your life",
                 "Are there aliens out there in the universe",
+                "Do the ends justify the means",
+                "Is there a cause you would die for",
+                "Have you ever done something unforgivable",
+                "Is anything truly unbiased",
+                "Are you proud of your life",
+                "Do you have a reason to wake up every day",
             ],
             () => true,
             ({target, scene}) => scene.pending.push(yesNoResponse.bind(null, target)),
@@ -963,6 +975,9 @@ async function performInnerDialogue(scene) {
                 "{{targetName}} seems {{targetEmotion}} today",
                 "{{targetName}} seems more {{targetEmotion}} than usual",
                 "{{targetName}} seems to be particularly {{targetEmotion}}",
+                "I'm getting strong {{targetEmotion}} vibes from {{targetName}}",
+                "I wonder what made {{targetName}} so {{targetEmotion}}",
+                "I hope I didn't make {{targetName}} {{targetEmotion}}",
             ],
             async ({actor, target}) => target != null && await allCharacters[actor].knowsSpecificFactAbout('feels', target, allCharacters[target].emotion),
         ),
@@ -974,6 +989,8 @@ async function performInnerDialogue(scene) {
                 "I wish {{targetName}} would leave",
                 "{{targetName}} shouldn't be here",
                 "I don't like being around {{targetName}}",
+                "Maybe {{targetName}} will leave soon",
+                "I hope {{targetName}} doesn't stay long",
             ],
             ({actor, target}) => target != null && allCharacters[actor].dislikes(target),
         ),
@@ -986,6 +1003,8 @@ async function performInnerDialogue(scene) {
                 "I like spending time with {{targetName}}",
                 "I wonder if {{targetName}} and I are friends",
                 "I'm glad {{targetName}} is here",
+                "I hope {{targetName}} will stay for a while",
+                "I want to get to know {{targetName}} better",
             ],
             ({target}) => target != null && allCharacters[actor].likes(target),
         ),
@@ -994,6 +1013,8 @@ async function performInnerDialogue(scene) {
             [
                 "I wish I was a {{targetProfession}} like {{targetName}}",
                 "I don't know if I could be a {{targetProfession}} like {{targetName}}",
+                "Being a {{targetProfession}} like {{targetName}} sounds hard",
+                "{{targetName}} make being a {{targetProfession}} look easy",
             ],
             async ({actor, target}) => target != null && await allCharacters[actor].knowsAnyFactAbout('profession', target),
         ),
@@ -1056,6 +1077,10 @@ async function performDialogue(scene) {
                 "I feel {{emotion}}",
                 "This {{environment}} makes me feel {{emotion}}",
                 "I feel like I've been {{emotion}} for days now",
+                "I sure wish I could stop being so {{emotion}}",
+                "This has been a very {{emotion}} day",
+                "It's not easy being so {{emotion}}",
+                "It would be nice if more people were {{emotion}} like me",
             ],
             () => true,
             ({scene, actor}) => scene.recordFact('feels', actor, allCharacters[actor].emotion),
@@ -1066,6 +1091,13 @@ async function performDialogue(scene) {
                 "I am {{age}} but I feel {{randomAge}}",
                 "It's not easy being {{age}}",
                 "I'm living my best life as a {{age}} year old",
+                "I tell myself that being {{age}} is no different than {{randomAge}}",
+                "{{age}} is a mind-trip",
+                "I would take being {{age}} over being {{randomAge}} any day",
+                "I used to fear reaching {{age}}",
+                "I can't win; {{randomAge}} is the new {{age}}",
+                "I think my life didn't truly begin until {{age}}",
+                "People ask me if they should worry about turning {{age}}, and I don't know what to tell them",
             ],
             () => true,
             ({scene, actor}) => scene.recordFact('age', actor, allCharacters[actor].age),
@@ -1137,6 +1169,7 @@ async function performDialogue(scene) {
                 "I would never have guessed you are a {{targetJob}}",
                 "Being a {{targetJob}} sounds hard",
                 "Being a {{targetJob}} sounds interesting",
+                "Now I know who to comem to if I have quesitons about becoming a {{targetJob}}",
             ],
             async ({actor, target}) => target != null && await allCharacters[actor].knowsAnyFactAbout('profession', target),
         ),
@@ -1164,6 +1197,9 @@ async function performDialogue(scene) {
                 "Sometimes I worry that this is as good as it gets",
                 "I worry about the future",
                 "It's hard to imagine a worse way to spend this day",
+                "I often think that the best parts of my life are over",
+                "I can't recall when I last felt optimistic",
+                "It is difficult to feel hope about the state of the world",
             ],
             ({actor}) => negativeEmotions.indexOf(allCharacters[actor].emotion) != -1,
         ),
@@ -1173,6 +1209,10 @@ async function performDialogue(scene) {
                 "I can't imagine how this day could be better",
                 "What an excellent afternoon",
                 "I feel quite content",
+                "It is truly a pleasure to be in such rare company",
+                "I'm glad to be here at this moment",
+                "I've never felt more alive",
+                "What a wondrous day to be alive",
             ],
             ({actor}) => positiveEmotions.indexOf(allCharacters[actor].emotion) != -1,
         ),
@@ -1182,6 +1222,9 @@ async function performDialogue(scene) {
                 "Not everybody is as {{targetEmotion}} as you",
                 "You should try being a bit less {{targetEmotion}}",
                 "It's a bit much when you're so {{targetEmotion}}",
+                "You don't need to be so obviously {{targetEmotion}}",
+                "Not everyone needs to know that you're {{targetEmotion}}",
+                "When you're so {{targetEmotion}}, it's a bit difficult for everyone who isn't"
             ],
             async ({actor, target}) => {
                 return target != null &&
@@ -1194,7 +1237,14 @@ async function performDialogue(scene) {
         ),
 
         new Action(
-            "I want to hold your hand",
+            [
+                "I want to hold your hand",
+                "Give me your hand, please",
+                "I'd like to get to know you better",
+                "Could we be friends",
+                "Let's get together sometime",
+                "I'd like to spend more time with you",
+            ],
             ({actor, target}) => target != null && allCharacters[actor].likes(target),
             ({scene, actor, target}) => {
                 scene.pending.push(respondToOffer.bind(
@@ -1217,6 +1267,9 @@ async function performDialogue(scene) {
             [
                 "I want to give you this {{heldObject}}",
                 "Do you want this {{heldObject}}",
+                "Please accept this {{heldObject}}",
+                "Take this {{heldObject}} from me",
+                "Here, have this {{heldObject}}",
             ],
             ({actor, target, state, targetState}) => target != null && state.holding != null && targetState == null,
             ({scene, actor, target, state, targetState}) => {
@@ -1407,6 +1460,8 @@ async function performAction(scene) {
                 "moves towards {{target}} {{emotion}}",
                 "steps closer towards {{target}}",
                 "takes a step toward {{target}}",
+                "inches toward {{target}}",
+                "leans closer to {{target}}",
             ]
         ),
         new Action(
@@ -1414,6 +1469,7 @@ async function performAction(scene) {
                 "edges away from {{target}} {{emotion}}",
                 "moves away from {{target}}",
                 "takes a step back from {{target}}",
+                "surreptitiously steps back from {{target}}",
             ]
         ),
 
@@ -1423,6 +1479,8 @@ async function performAction(scene) {
                 "gazes at {{target}}",
                 "looks intently at {{target}}",
                 "looks at {{target}} consideringly",
+                "looks at {{target}} through half-lidded eyes",
+                "glances sidelong at {{target}}",
             ],
             ({state, target}) => state.eyes == "open" && state.lookingAt != target,
             ({state, target}) => state.lookingAt = target,
@@ -1459,7 +1517,10 @@ async function performAction(scene) {
     const soloActions = new Actions([
         // Pick up object in scene
         new Action(
-            "picks up {{object}}",
+            [
+                "picks up {{object}}",
+                "takes {{object}}",
+            ],
             ({state, object}) => state.holding == null && object,
             ({state, object, setting}) => {
                 state.holding = object;
@@ -1473,6 +1534,7 @@ async function performAction(scene) {
                 "replaces {{holding}}",
                 "puts down {{holding}}",
                 "places {{holding}} back where it came from",
+                "lays down {{holding}}",
             ],
             ({state}) => state.holding != null,
             ({setting, state}) => {
@@ -1487,6 +1549,7 @@ async function performAction(scene) {
                 "runs {{their}} hand along {{object}} {{emotion}}",
                 "caresses {{object}} {{emotion}}",
                 "slowly trails a finger along the length of {{object}}",
+                "lays their hand against {{object}} {{emotion}}",
             ],
             ({state, object}) => state.eyes == "open" && object,
         ),
@@ -1503,7 +1566,11 @@ async function performAction(scene) {
 
         // Look at object in scene.
         new Action(
-            "gazes at {{object}}",
+            [
+                "gazes at {{object}}",
+                "looks at {{object}}",
+                "stares at {{object}}",
+            ],
             ({state, object}) => state.eyes == "open" && state.lookingAt != object && object,
             ({state, object}) => state.lookingAt = object,
         ),
@@ -1531,7 +1598,10 @@ async function performAction(scene) {
 
         // Stop looking at current target.
         new Action(
-            "looks elsewhere",
+            [
+                "looks elsewhere",
+                "looks away",
+            ],
             ({state}) => state.eyes == "open" && state.lookingAt != null,
             ({state}) => state.lookingAt = null,
         ),
@@ -1555,6 +1625,7 @@ async function performAction(scene) {
                 "hums",
                 "frowns",
                 "smiles",
+                "smiles widely",
                 "grins",
                 "grimaces",
                 "smirks",
@@ -1564,6 +1635,8 @@ async function performAction(scene) {
                 "adjusts {{their}} stance",
                 "shuffles {{their}} feet",
                 "sways {{emotion}}",
+                "abruptly sneezes",
+                "sniffs loudly",
             ],
         ),
     ], {
@@ -1626,6 +1699,9 @@ async function introduceSelf2(scene, actor) {
                 "I am a {{job}}",
                 "I'm a {{job}}",
                 "I guess you could say I'm a {{job}}",
+                "I've been a {{job}} for a while",
+                "I just started being a {{job}}",
+                "I'm learning how to be a {{job}}",
             ],
             () => true,
             ({scene, actor}) => scene.recordFact('profession', actor, allCharacters[actor].profession),
@@ -1635,6 +1711,10 @@ async function introduceSelf2(scene, actor) {
             [
                 "I'm {{age}}",
                 "I'm {{age}} years old",
+                "I just turned {{age}}",
+                "I'm {{age}} years young",
+                "I'm almost {{age}}",
+                "I turn {{age}} soon",
             ],
             () => true,
             ({scene, actor}) => scene.recordFact('age', actor, allCharacters[actor].age),
@@ -1669,8 +1749,11 @@ async function introduceSelf(scene, actor, isReply) {
                 "{{fullName}}",
                 "You can call me {{name}}",
                 "{{fullName}}, but you can call me {{name}}",
+                "{{fullName}}, but please call me {{name}}",
                 "Call me {{name}}",
                 "{{lastName}}. {{fullName}}",
+                "I go by {{name}}",
+                "My friends call me {{name}}",
             ],
             () => true,
             ({scene, actor}) => {
@@ -1763,12 +1846,22 @@ async function greetEntry(scene, newActor) {
                 "Welcome {{enteredName}}",
                 "Hello",
                 "Hello {{enteredName}}",
+                "Welcome",
+                "Welcome {{enteredName}}",
+                "Nice to see you {{enteredName}}",
+                "Nice to see you",
             ],
             ({actor, entered}) => allCharacters[actor].knows(entered),
         ),
 
         new Action(
-            "Who are you",
+            [
+                "Who are you",
+                "I don't recognize you",
+                "You must be new",
+                "Are you new here",
+                "Hello stranger",
+            ],
             ({actor, entered}) => !allCharacters[actor].knows(entered),
             ({scene, entered}) => scene.pending.push(introduceSelf.bind(null, scene, entered, true)),
         ),
@@ -1946,6 +2039,9 @@ Scene.prototype.generateAction = async function() {
                 result.stateChange();
             }
 
+            if (proposed.indexOf('{{') != -1) {
+                throw "Missing replacement: " + proposed;
+            }
             this.actions.push(proposed);
             break;
         }
