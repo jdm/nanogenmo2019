@@ -2146,6 +2146,66 @@ async function createScene(setting, povCharacter) {
 
 /////////////////
 
+const chapterPrefixes = [
+    "A",
+    "The",
+    "One",
+];
+
+const chapterModifiers = [
+    "",
+    "Big",
+    "Small",
+    "Large",
+    "Tiny",
+    "Worrying",
+    "Positive",
+    "New",
+    "Old",
+    "Wonderful",
+    "Tragic",
+    "Monstrous",
+    "Logical",
+    "Powerful",
+    "Uncertain",
+    "Unknown",
+    "Only",
+    "Real",
+    "Pretend",
+    "Rational",
+    "Inescapable",
+    "Disquieting",
+    "Concerning",
+    "Fundamental",
+    "Unique",
+    "Underwhelming",
+];
+
+const chapterTitles = [
+    "Stranger",
+    "Friend",
+    "Enemy",
+    "Nemesis",
+    "Ally",
+    "Question",
+    "Development",
+    "Family",
+    "Answer",
+    "Event",
+    "Introduction",
+    "Conclusion",
+    "Setback",
+    "Gift",
+    "Instruction",
+    "Relationship",
+    "Relation",
+    "Object",
+    "Environment",
+    "Creation",
+    "Statement",
+    "Action",
+];
+
 async function create(scenes) {
     let family = createFamily();
 
@@ -2186,7 +2246,18 @@ async function create(scenes) {
     let outerDialogue = /"[^"]*"/;
     let innerDialogue = /^'[^']*'/;
 
+    let chapter = 1;
+
     for (const scene of plot) {
+        let title = "Chapter " + chapter++ + ": ";
+        title += choose(chapterPrefixes) + " ";
+        let modifier = choose(chapterModifiers);
+        if (modifier) {
+            title += modifier + " ";
+        }
+        title += choose(chapterTitles);
+        console.log(title);
+        console.log();
 
         let actionGroups = [];
         let currentGroup = [];
